@@ -17,5 +17,9 @@
   "bugs": {
     "url": "https://github.com/martynasmat/consensus/issues"
   },
-  "homepage": "https://github.com/martynasmat/consensus#readme"
+  "homepage": "https://github.com/martynasmat/consensus#readme",
+  "dependencies": {
+    "@truffle/hdwallet-provider": "^2.1.15",
+    "dotenv": "^17.2.3"
+  }
 }

@@ -46,6 +46,9 @@
 
 // const HDWalletProvider = require('@truffle/hdwallet-provider');
 
+require("dotenv").config();
+const HDWalletProvider = require("@truffle/hdwallet-provider");
+
 module.exports = {
   /**
    * Networks define how you connect to your ethereum client and let you set the
@@ -62,6 +65,15 @@ module.exports = {
       host: "127.0.0.1",
       port: 7545,     // Ganache UI default; use 8545 for ganache-cli
       network_id: "*",
+    },
+    
+    sepolia: {
+      provider: () =>
+        new HDWalletProvider(process.env.PRIVATE_KEY, `https://sepolia.infura.io/v3/${process.env.SEPOLIA_API_KEY}`),
+      network_id: 11155111,
+      confirmations: 2,
+      timeoutBlocks: 200,
+      skipDryRun: true,
     },
     // Useful for testing. The `development` name is special - truffle uses it by default
     // if it's defined here and no other network is specified at the command line.
