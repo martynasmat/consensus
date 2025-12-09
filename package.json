@@ -1,0 +1,21 @@
+{
+  "name": "consensus",
+  "version": "1.0.0",
+  "description": "\"Consensus\" yra decentralizuota prognozių rinka *(angl. prediction market)*, veikianti panašiu principu į *Polymarket/Kalshi*:\r - vartotojai stato ETH už **YES** arba **NO**,\r - pasibaigus laikui, `resolver` nustato laimėjusį rezultatą,\r - laimėtojai pasidalina bendrą sumą proporcingai pagal savo statymo dydį.\r - Platforma pasilieka 0.5% mokestį nuo kiekvieno statymo.",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/martynasmat/consensus.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "bugs": {
+    "url": "https://github.com/martynasmat/consensus/issues"
+  },
+  "homepage": "https://github.com/martynasmat/consensus#readme"
+}
