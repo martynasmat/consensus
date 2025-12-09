@@ -5,18 +5,15 @@ import "./PredictionMarket.sol";
 
 contract MarketFactory {
     address public owner;
-
-    // Only allow select users to create markets
     mapping(address => bool) public approvedCreator;
-
     address[] public markets;
 
     event CreatorApprovalChanged(address indexed creator, bool approved);
-
     event MarketCreated(
         address indexed market,
         address indexed creator,
         address indexed resolver,
+        address feeRecipient,
         bytes32 questionId,
         uint256 closeTime
     );
@@ -35,7 +32,6 @@ contract MarketFactory {
         approvedCreator[msg.sender] = true;
     }
 
-    // Approve or revoke a creator
     function setApprovedCreator(address creator, bool approved) external onlyOwner {
         if (creator == address(0)) revert ZeroAddress();
         approvedCreator[creator] = approved;
@@ -47,15 +43,14 @@ contract MarketFactory {
         returns (address market)
     {
         if (!approvedCreator[msg.sender]) revert NotApprovedCreator();
-        
         if (resolver == address(0)) revert ZeroAddress();
         require(closeTime > block.timestamp, "closeTime<=now");
 
-        PredictionMarket m = new PredictionMarket(questionId, closeTime, resolver);
+        PredictionMarket m = new PredictionMarket(questionId, closeTime, resolver, owner);
         market = address(m);
 
         markets.push(market);
-        emit MarketCreated(market, msg.sender, resolver, questionId, closeTime);
+        emit MarketCreated(market, msg.sender, resolver, owner, questionId, closeTime);
     }
 
     function marketsCount() external view returns (uint256) {
