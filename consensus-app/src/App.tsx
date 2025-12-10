@@ -1,35 +1,64 @@
-import { useState } from 'react'
-import reactLogo from './assets/react.svg'
-import viteLogo from '/vite.svg'
-import './App.css'
+import { useEffect, useState } from "react";
+import { BrowserProvider } from "ethers";
 
-function App() {
-  const [count, setCount] = useState(0)
-
-  return (
-    <>
-      <div>
-        <a href="https://vite.dev" target="_blank">
-          <img src={viteLogo} className="logo" alt="Vite logo" />
-        </a>
-        <a href="https://react.dev" target="_blank">
-          <img src={reactLogo} className="logo react" alt="React logo" />
-        </a>
-      </div>
-      <h1>Vite + React</h1>
-      <div className="card">
-        <button onClick={() => setCount((count) => count + 1)}>
-          count is {count}
-        </button>
-        <p>
-          Edit <code>src/App.tsx</code> and save to test HMR
-        </p>
-      </div>
-      <p className="read-the-docs">
-        Click on the Vite and React logos to learn more
-      </p>
-    </>
-  )
+declare global {
+    interface Window {
+        ethereum?: any;
+    }
 }
 
-export default App
+export default function App() {
+    const [hasMetaMask, setHasMetaMask] = useState(false);
+    const [account, setAccount] = useState<string>("");
+    const [chainId, setChainId] = useState<string>("");
+    const [status, setStatus] = useState<string>("");
+
+    useEffect(() => {
+        setHasMetaMask(Boolean(window.ethereum));
+    }, []);
+
+    async function connect() {
+        if (!window.ethereum) {
+            setStatus("MetaMask not detected.");
+            return;
+        }
+
+        try {
+            setStatus("Connecting…");
+            const provider = new BrowserProvider(window.ethereum);
+
+            const accounts: string[] = await provider.send("eth_requestAccounts", []);
+            const network = await provider.getNetwork();
+
+            setAccount(accounts[0] ?? "");
+            setChainId(network.chainId.toString());
+            setStatus("Connected.");
+        } catch (err: any) {
+            setStatus(err?.message ?? "User rejected or connection failed.");
+        }
+    }
+
+    return (
+        <div>
+            <h1>Consensus</h1>
+
+            {!hasMetaMask && (
+                <p>
+                    MetaMask not found. Install it to continue.
+                </p>
+            )}
+
+            {hasMetaMask && !account && (
+                <button onClick={connect}>Connect MetaMask</button>
+            )}
+
+            {account && (
+                <>
+                    <p><b>Account:</b> {account}</p>
+                </>
+            )}
+
+            {status && <p>{status}</p>}
+        </div>
+    );
+}
