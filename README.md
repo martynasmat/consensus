@@ -22,7 +22,7 @@
 
 ## Duomenys
 Kiekviena rinka `PredictionMarket` turi:
-- `questionId`: klausimo identifikatorių `sha256(klausimo_tekstas)`
+- `questionId`: klausimo identifikatorių `keccak256(klausimo_tekstas)`
 - `closeTime`: *UNIX timestamp*, iki kurio galima statyti
 - `resolver`: adresas, kuris gali nustatyti rezultatą
 - `outcome`: `Unresolved / Yes / No`
