@@ -238,11 +238,10 @@ body {
   gap: 12px;
   padding: 16px;
   cursor: pointer;
-  transition: transform 0.2s ease, border 0.2s ease;
+  transition: border 0.2s ease;
 }
 
 .market-card:hover {
-  transform: translateY(-4px);
   border-color: rgba(103, 232, 249, 0.3);
 }
 
