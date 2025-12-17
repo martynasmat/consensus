@@ -474,3 +474,16 @@ body {
   color: #f87171;
   border-color: rgba(239, 68, 68, 0.35);
 }
+
+.withdraw-button {
+  align-self: flex-start;
+}
+.withdraw-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.withdraw-button {
+  align-self: flex-start;
+}

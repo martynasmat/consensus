@@ -25,6 +25,8 @@ type MarketSummary = {
     outcome: number;
     totalYes: string;
     totalNo: string;
+    feeRecipient: string;
+    feesAccrued: string;
 };
 
 type MarketTx = {
@@ -203,6 +205,8 @@ export default function App() {
                         outcome,
                         totalYes,
                         totalNo,
+                        feeRecipient,
+                        feesAccrued,
                     ] = await Promise.all([
                         marketContract.questionId(),
                         marketContract.question(),
@@ -211,6 +215,8 @@ export default function App() {
                         marketContract.outcome(),
                         marketContract.totalYes(),
                         marketContract.totalNo(),
+                        marketContract.feeRecipient(),
+                        marketContract.feesAccrued(),
                     ]);
 
                     return {
@@ -222,6 +228,8 @@ export default function App() {
                         outcome: Number(outcome),
                         totalYes: formatEther(totalYes),
                         totalNo: formatEther(totalNo),
+                        feeRecipient,
+                        feesAccrued: formatEther(feesAccrued),
                     };
                 })
             );
@@ -390,6 +398,36 @@ export default function App() {
         }
     }
 
+    async function withdrawFees(
+        market: MarketSummary,
+        button?: HTMLButtonElement | null
+    ) {
+        if (!window.ethereum) return setStatus("MetaMask not detected.");
+        if (!account) return setStatus("Connect MetaMask first.");
+
+        if (account.toLowerCase() !== market.feeRecipient.toLowerCase()) {
+            return setStatus("Only the fee recipient can withdraw fees.");
+        }
+
+        try {
+            button && (button.disabled = true);
+            setStatus("Submitting withdraw transaction…");
+            const provider = new BrowserProvider(window.ethereum);
+            const signer = await provider.getSigner();
+            const contract = new Contract(market.market, PredictionMarketABI, signer);
+            const tx = await contract.withdrawFees();
+            setStatus("Waiting for confirmation…");
+            await tx.wait();
+            setStatus("Fees withdrawn.");
+            await loadMarkets();
+            await loadTransactions(market.market);
+        } catch (err: any) {
+            setStatus(err?.shortMessage ?? err?.message ?? "Withdraw failed.");
+        } finally {
+            button && (button.disabled = false);
+        }
+    }
+
     function updateBuyAmount(marketAddress: string, value: string) {
         setBuyAmounts((prev) => ({
             ...prev,
@@ -544,18 +582,23 @@ export default function App() {
 
                                 <div className="detail-stats">
                                     <div>
-                                        <p className="muted">Total YES</p>
-                                        <p className="liquidity">{market.totalYes} ETH</p>
-                                    </div>
-                                    <div>
-                                        <p className="muted">Total NO</p>
-                                        <p className="liquidity">{market.totalNo} ETH</p>
+                                        <p className="muted">Total ETH</p>
+                                        <p className="liquidity">
+                                            {(
+                                                Number(market.totalYes) + Number(market.totalNo)
+                                            ).toFixed(3)}{" "}
+                                            ETH
+                                        </p>
                                     </div>
                                     <div>
                                         <p className="muted">Outcome</p>
                                         <p className="liquidity">
                                             {OUTCOME_LABEL[market.outcome] ?? "Unknown"}
                                         </p>
+                                    </div>
+                                    <div>
+                                        <p className="muted">Fees accrued</p>
+                                        <p className="liquidity">{market.feesAccrued} ETH</p>
                                     </div>
                                 </div>
 
@@ -620,6 +663,21 @@ export default function App() {
                                             }
                                         >
                                             Resolve NO
+                                        </button>
+                                    </div>
+                                )}
+
+                                {account.toLowerCase() === market.feeRecipient.toLowerCase() && (
+                                    <div className="withdraw-row">
+                                        <p className="muted">
+                                            Fees accrued:{" "}
+                                            <strong>{market.feesAccrued} ETH</strong>
+                                        </p>
+                                        <button
+                                            className="ghost withdraw-button"
+                                            onClick={(e) => withdrawFees(market, e.currentTarget)}
+                                        >
+                                            Withdraw fees
                                         </button>
                                     </div>
                                 )}
