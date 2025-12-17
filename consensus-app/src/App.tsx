@@ -31,7 +31,7 @@ type MarketSummary = {
 
 type MarketTx = {
     hash: string;
-    type: "Trade" | "Resolve" | "Withdraw";
+    type: "Buy YES" | "Buy NO" | "Resolve" | "Fee Withdrawal" | "Trade";
     sender: string;
     value: string;
 };
@@ -67,6 +67,11 @@ export default function App() {
         ? markets.find((m) => m.market.toLowerCase() === viewedMarketAddress)
         : null;
     const viewingMarketPage = Boolean(marketMatch);
+    useEffect(() => {
+        if (viewedMarket && window.ethereum) {
+            void loadTransactions(viewedMarket.market);
+        }
+    }, [viewedMarket?.market]);
 
     useEffect(() => {
         setHasMetaMask(Boolean(window.ethereum));
@@ -342,7 +347,14 @@ export default function App() {
                     try {
                         parsed = iface.parseLog({ topics: log.topics, data: log.data });
                         if (parsed?.name === "Resolved") type = "Resolve";
-                        if (parsed?.name === "FeesWithdrawn") type = "Withdraw";
+                        if (parsed?.name === "FeesWithdrawn") type = "Fee Withdrawal";
+                        if (parsed?.name === "Staked") {
+                            const outcome = Number(
+                                parsed.args?.side ?? parsed.args?.outcome ?? 0
+                            );
+                            if (outcome === 1) type = "Buy YES";
+                            if (outcome === 2) type = "Buy NO";
+                        }
                     } catch {
                         type = "Trade";
                     }

@@ -16,7 +16,7 @@ export const PredictionMarketABI = [
     "function feesAccrued() view returns (uint256)",
     "function feeRecipient() view returns (address)",
     "function withdrawFees()",
-    "event Staked(address indexed trader, uint8 outcome, uint256 grossAmount, uint256 fee, uint256 netAmount)",
-    "event Resolved(uint8 outcome)",
+    "event Staked(address indexed trader, uint8 indexed side, uint256 grossAmount, uint256 fee, uint256 netAmount)",
+    "event Resolved(uint8 indexed outcome)",
     "event FeesWithdrawn(address indexed to, uint256 amount)",
 ];
