@@ -228,14 +228,15 @@ body {
 
 .markets-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
   gap: 20px;
 }
 
 .market-card {
   display: flex;
   flex-direction: column;
-  gap: 14px;
+  gap: 12px;
+  padding: 16px;
   cursor: pointer;
   transition: transform 0.2s ease, border 0.2s ease;
 }
@@ -261,7 +262,7 @@ body {
   display: flex;
   justify-content: space-between;
   gap: 12px;
-  font-size: 0.85rem;
+  font-size: 0.78rem;
   color: #9aaad8;
 }
 
@@ -329,23 +330,6 @@ body {
 
 .potential-popup p {
   margin: 4px 0;
-}
-
-.market-links {
-  display: flex;
-  justify-content: space-between;
-  font-size: 0.85rem;
-  color: #9aaad8;
-}
-
-.market-links a,
-.market-links span {
-  text-decoration: none;
-  color: #9aaad8;
-}
-
-.market-links a:hover {
-  color: #cbd5ff;
 }
 
 .approval-pill {
@@ -419,4 +403,49 @@ body {
   font-size: 1.1rem;
   font-weight: 600;
   margin: 4px 0 0;
+}
+.transactions-section {
+  margin-top: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.transactions-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.transaction-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px 14px;
+  border-radius: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  text-decoration: none;
+  color: #f5f7fb;
+  background: rgba(8, 12, 24, 0.9);
+}
+
+.transaction-type {
+  margin: 0;
+  font-weight: 600;
+}
+
+.transaction-meta {
+  margin: 2px 0 0;
+  color: #9aaad8;
+  font-size: 0.85rem;
+}
+
+.transaction-value {
+  font-weight: 600;
+}
+
+.redirect-icon {
+  margin-left: 6px;
+  font-size: 0.85rem;
+  opacity: 0.7;
 }

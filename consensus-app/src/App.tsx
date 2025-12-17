@@ -27,6 +27,13 @@ type MarketSummary = {
     totalNo: string;
 };
 
+type MarketTx = {
+    hash: string;
+    type: "Trade" | "Resolve" | "Withdraw";
+    sender: string;
+    value: string;
+};
+
 const OUTCOME_LABEL: Record<number, string> = {
     0: "Unresolved",
     1: "Yes",
@@ -48,6 +55,9 @@ export default function App() {
     const [loadingMarkets, setLoadingMarkets] = useState(false);
     const [marketsError, setMarketsError] = useState("");
     const [buyAmounts, setBuyAmounts] = useState<Record<string, string>>({});
+    const [marketTransactions, setMarketTransactions] = useState<
+        Record<string, MarketTx[]>
+    >({});
     const navigate = useNavigate();
     const marketMatch = useMatch("/market/:address");
     const viewedMarketAddress = marketMatch?.params?.address?.toLowerCase();
@@ -305,6 +315,50 @@ export default function App() {
         }
     }
 
+    async function loadTransactions(marketAddress: string) {
+        if (!window.ethereum) return;
+        try {
+            const provider = new BrowserProvider(window.ethereum);
+            const dummy = new Contract(marketAddress, PredictionMarketABI);
+            const iface = dummy.interface;
+            const latestBlock = BigInt(await provider.getBlockNumber());
+            const history = await provider.getLogs({
+                address: marketAddress,
+                fromBlock: latestBlock > 5000n ? latestBlock - 5000n : 0n,
+                toBlock: "latest",
+            });
+            const txs: MarketTx[] = await Promise.all(
+                history.slice(-10).map(async (log: any) => {
+                    let type: MarketTx["type"] = "Trade";
+                    let parsed;
+                    try {
+                        parsed = iface.parseLog({ topics: log.topics, data: log.data });
+                        if (parsed?.name === "Resolved") type = "Resolve";
+                        if (parsed?.name === "FeesWithdrawn") type = "Withdraw";
+                    } catch {
+                        type = "Trade";
+                    }
+                    const tx = await provider.getTransaction(log.transactionHash);
+                    const value =
+                        parsed?.args?.grossAmount?.toString() ??
+                        (tx?.value ? tx.value : 0n);
+                    return {
+                        hash: log.transactionHash,
+                        type,
+                        sender: tx?.from ?? "0x0",
+                        value: formatEther(value),
+                    };
+                })
+            );
+            setMarketTransactions((prev) => ({
+                ...prev,
+                [marketAddress]: txs.reverse(),
+            }));
+        } catch (err: any) {
+            console.error("Failed to fetch transactions", err);
+        }
+    }
+
     function updateBuyAmount(marketAddress: string, value: string) {
         setBuyAmounts((prev) => ({
             ...prev,
@@ -428,8 +482,10 @@ export default function App() {
                                             target="_blank"
                                             rel="noreferrer"
                                             className="address-link"
+                                            aria-label="View market on Etherscan"
                                         >
                                             {market.market}
+                                            <span className="redirect-icon">↗</span>
                                         </a>
                                     </div>
                                     <div>
@@ -439,8 +495,10 @@ export default function App() {
                                             target="_blank"
                                             rel="noreferrer"
                                             className="address-link"
+                                            aria-label="View resolver on Etherscan"
                                         >
                                             {market.resolver}
+                                            <span className="redirect-icon">↗</span>
                                         </a>
                                     </div>
                                     <div>
@@ -504,6 +562,51 @@ export default function App() {
                                     >
                                         Buy NO · {noPct}%
                                     </button>
+                                </div>
+
+                                <div className="transactions-section">
+                                    <div className="section-headline">
+                                        <div>
+                                            <p className="eyebrow">Activity</p>
+                                            <h3>Recent transactions</h3>
+                                        </div>
+                                        <button
+                                            className="ghost"
+                                            onClick={() =>
+                                                void loadTransactions(market.market)
+                                            }
+                                        >
+                                            Refresh
+                                        </button>
+                                    </div>
+                                    <div className="transactions-list">
+                                        {(marketTransactions[market.market] ?? []).map((tx) => (
+                                            <a
+                                                key={tx.hash}
+                                                href={`https://sepolia.etherscan.io/tx/${tx.hash}`}
+                                                target="_blank"
+                                                rel="noreferrer"
+                                                className="transaction-row"
+                                            >
+                                                <div>
+                                                    <p className="transaction-type">
+                                                        {tx.type}
+                                                    </p>
+                                                    <p className="transaction-meta">
+                                                        {tx.sender.slice(0, 6)}…
+                                                        {tx.sender.slice(-4)}
+                                                    </p>
+                                                </div>
+                                                <div className="transaction-value">
+                                                    {tx.value} ETH
+                                                </div>
+                                                <span className="redirect-icon">↗</span>
+                                            </a>
+                                        ))}
+                                        {(marketTransactions[market.market] ?? []).length === 0 && (
+                                            <p className="muted">No activity yet.</p>
+                                        )}
+                                    </div>
                                 </div>
                             </>
                         ) : (
@@ -704,24 +807,6 @@ export default function App() {
                                             >
                                                 Buy NO · {noPct}%
                                             </button>
-                                        </div>
-                                        <div className="market-links">
-                                            <a
-                                                href={sepoliaEtherscanAddress(mkt.market)}
-                                                target="_blank"
-                                                rel="noreferrer"
-                                                onClick={(e) => e.stopPropagation()}
-                                            >
-                                                View on Etherscan
-                                            </a>
-                                            <a
-                                                href={sepoliaEtherscanAddress(mkt.resolver)}
-                                                target="_blank"
-                                                rel="noreferrer"
-                                                onClick={(e) => e.stopPropagation()}
-                                            >
-                                                Resolver
-                                            </a>
                                         </div>
                                     </article>
                                 );
