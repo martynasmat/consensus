@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
-import type { FormEvent } from "react";
-import { BrowserProvider, Contract, formatEther } from "ethers";
+import type { FormEvent, KeyboardEvent } from "react";
+import { BrowserProvider, Contract, formatEther, parseEther } from "ethers";
 import { CONFIG } from "./config.ts";
 import { MarketFactoryABI } from "./abi/MarketFactory.ts";
 import { PredictionMarketABI } from "./abi/PredictionMarket.ts";
@@ -13,6 +13,7 @@ declare global {
 }
 
 const FACTORY_ADDRESS = CONFIG.FACTORY_ADDRESS;
+type OutcomeSide = "Yes" | "No";
 
 type MarketSummary = {
     market: string;
@@ -37,8 +38,6 @@ export default function App() {
     const [chainId, setChainId] = useState<string>("");
     const [status, setStatus] = useState<string>("");
 
-    const [factoryOwner, setFactoryOwner] = useState<string>("");
-    const [checkingCreator, setCheckingCreator] = useState(false);
     const [isApprovedCreator, setIsApprovedCreator] = useState<boolean | null>(null);
     const [creatingMarket, setCreatingMarket] = useState(false);
     const [questionInput, setQuestionInput] = useState("");
@@ -47,6 +46,7 @@ export default function App() {
     const [markets, setMarkets] = useState<MarketSummary[]>([]);
     const [loadingMarkets, setLoadingMarkets] = useState(false);
     const [marketsError, setMarketsError] = useState("");
+    const [buyAmounts, setBuyAmounts] = useState<Record<string, string>>({});
 
     useEffect(() => {
         setHasMetaMask(Boolean(window.ethereum));
@@ -120,16 +120,11 @@ export default function App() {
 
         (async () => {
             try {
-                setCheckingCreator(true);
-                setStatus("Checking creator approval…");
                 const provider = new BrowserProvider(window.ethereum);
                 const factory = new Contract(FACTORY_ADDRESS, MarketFactoryABI, provider);
                 const approved: boolean = await factory.approvedCreator(account);
                 if (!cancelled) {
                     setIsApprovedCreator(approved);
-                    setStatus(
-                        approved ? "Creator is approved." : "Creator is not approved."
-                    );
                 }
             } catch (err: any) {
                 if (!cancelled) {
@@ -139,9 +134,6 @@ export default function App() {
                     );
                 }
             } finally {
-                if (!cancelled) {
-                    setCheckingCreator(false);
-                }
             }
         })();
 
@@ -153,21 +145,10 @@ export default function App() {
     const sepoliaEtherscanAddress = (addr: string) =>
         `https://sepolia.etherscan.io/address/${addr}`;
 
-    async function readFactoryOwner() {
-        if (!window.ethereum) return setStatus("MetaMask not detected.");
-        if (!account) return setStatus("Connect MetaMask first.");
+    const openMarketPage = (addr: string) => {
+        window.open(sepoliaEtherscanAddress(addr), "_blank");
+    };
 
-        try {
-            setStatus("Reading contract…");
-            const provider = new BrowserProvider(window.ethereum);
-            const factory = new Contract(FACTORY_ADDRESS, MarketFactoryABI, provider);
-            const owner: string = await factory.owner();
-            setFactoryOwner(owner);
-            setStatus("Read success.");
-        } catch (err: any) {
-            setStatus(err?.shortMessage ?? err?.message ?? "Read failed.");
-        }
-    }
 
     const loadMarkets = useCallback(async () => {
         if (!window.ethereum) {
@@ -195,41 +176,41 @@ export default function App() {
 
             const summaries: MarketSummary[] = await Promise.all(
                 marketAddresses.map(async (marketAddr) => {
-            const marketContract = new Contract(
-                marketAddr,
-                PredictionMarketABI,
-                provider
-            );
-            const [
-                questionId,
-                question,
-                closeTime,
-                resolver,
-                outcome,
-                totalYes,
-                totalNo,
-            ] = await Promise.all([
-                marketContract.questionId(),
-                marketContract.question(),
-                marketContract.closeTime(),
-                marketContract.resolver(),
-                marketContract.outcome(),
-                marketContract.totalYes(),
-                marketContract.totalNo(),
-            ]);
+                    const marketContract = new Contract(
+                        marketAddr,
+                        PredictionMarketABI,
+                        provider
+                    );
+                    const [
+                        questionId,
+                        question,
+                        closeTime,
+                        resolver,
+                        outcome,
+                        totalYes,
+                        totalNo,
+                    ] = await Promise.all([
+                        marketContract.questionId(),
+                        marketContract.question(),
+                        marketContract.closeTime(),
+                        marketContract.resolver(),
+                        marketContract.outcome(),
+                        marketContract.totalYes(),
+                        marketContract.totalNo(),
+                    ]);
 
-            return {
-                market: marketAddr,
-                question,
-                questionId: questionId.toString(),
-                closeTime: Number(closeTime),
-                resolver,
-                outcome: Number(outcome),
-                totalYes: formatEther(totalYes),
-                totalNo: formatEther(totalNo),
-            };
-        })
-    );
+                    return {
+                        market: marketAddr,
+                        question,
+                        questionId: questionId.toString(),
+                        closeTime: Number(closeTime),
+                        resolver,
+                        outcome: Number(outcome),
+                        totalYes: formatEther(totalYes),
+                        totalNo: formatEther(totalNo),
+                    };
+                })
+            );
 
             setMarkets(summaries);
         } catch (err: any) {
@@ -320,194 +301,262 @@ export default function App() {
         }
     }
 
+    function updateBuyAmount(marketAddress: string, value: string) {
+        setBuyAmounts((prev) => ({
+            ...prev,
+            [marketAddress]: value,
+        }));
+    }
+
+    async function handleBuy(market: MarketSummary, side: OutcomeSide) {
+        if (!window.ethereum) return setStatus("MetaMask not detected.");
+        if (!account) return setStatus("Connect MetaMask first.");
+        const amount = buyAmounts[market.market]?.trim();
+        if (!amount) return setStatus("Enter an ETH amount before buying.");
+
+        let parsed;
+        try {
+            parsed = parseEther(amount);
+        } catch {
+            return setStatus("Invalid ETH amount.");
+        }
+        if (parsed <= 0n) return setStatus("Amount must be greater than 0.");
+
+        try {
+            setStatus(`Submitting ${side} order…`);
+            const provider = new BrowserProvider(window.ethereum);
+            const signer = await provider.getSigner();
+            const marketContract = new Contract(
+                market.market,
+                PredictionMarketABI,
+                signer
+            );
+            const tx =
+                side === "Yes"
+                    ? await marketContract.stakeYesSide({ value: parsed })
+                    : await marketContract.stakeNoSide({ value: parsed });
+            setStatus("Waiting for confirmation…");
+            await tx.wait();
+            setStatus(`Buy ${side} confirmed.`);
+            updateBuyAmount(market.market, "");
+            await loadMarkets();
+        } catch (err: any) {
+            setStatus(err?.shortMessage ?? err?.message ?? `Buy ${side} failed.`);
+        }
+    }
+
+    const canCreateMarket = isApprovedCreator === true;
+
     return (
-        <div style={{ padding: 16 }}>
-            <h1>Consensus (DApp)</h1>
-
-            {!hasMetaMask && <p>MetaMask not found.</p>}
-
-            {hasMetaMask && !account && (
-                <button onClick={connect}>Connect MetaMask</button>
-            )}
-
-            {account && (
-                <>
-                    <p>
-                        <b>Account:</b>{" "}
-                        <a
-                            href={sepoliaEtherscanAddress(account)}
-                            target="_blank"
-                            rel="noreferrer"
-                        >
-                            {account}
-                        </a>
-                    </p>
-
-                    <p><b>Chain ID:</b> {chainId}</p>
-
-                    <button onClick={readFactoryOwner}>Read Factory Owner</button>
-
-                    {factoryOwner && (
-                        <p>
-                            <b>Factory owner:</b>{" "}
-                            <a
-                                href={sepoliaEtherscanAddress(factoryOwner)}
-                                target="_blank"
-                                rel="noreferrer"
-                            >
-                                {factoryOwner}
-                            </a>
+        <div className="app">
+            <div className="app-shell">
+                <header className="hero">
+                    <div>
+                        <p className="eyebrow">On-chain prediction markets</p>
+                        <h1>Consensus</h1>
+                        <p className="hero-subtitle">
+                            Launch, resolve, and trade binary markets directly on Sepolia.
                         </p>
-                    )}
-                    <div style={{ marginTop: 24, padding: 12, border: "1px solid #ccc", borderRadius: 8 }}>
-                        <h2>Create Market</h2>
-                        <p>
-                            Creator approval:{" "}
-                            {checkingCreator
-                                ? "Checking…"
-                                : isApprovedCreator
-                                ? "Approved"
-                                : "Not approved"}
-                        </p>
+                    </div>
+                    <div className="card wallet-card">
+                        {!hasMetaMask && (
+                            <p className="muted">Install MetaMask to get started.</p>
+                        )}
 
-                        {isApprovedCreator ? (
-                            <form
-                                onSubmit={handleCreateMarket}
-                                style={{ display: "flex", flexDirection: "column", gap: 12 }}
-                            >
-                                <label>
-                                    Question
-                                    <input
-                                        type="text"
-                                        value={questionInput}
-                                        onChange={(e) => setQuestionInput(e.target.value)}
-                                        placeholder="Will ETH be above $3k by June?"
-                                        style={{ width: "100%", padding: 8, marginTop: 4 }}
-                                    />
-                                </label>
+                        {hasMetaMask && !account && (
+                            <button className="primary" onClick={connect}>
+                                Connect MetaMask
+                            </button>
+                        )}
 
-                                <label>
-                                    Close Time
-                                    <input
-                                        type="datetime-local"
-                                        value={closeTimeInput}
-                                        onChange={(e) => setCloseTimeInput(e.target.value)}
-                                        style={{ width: "100%", padding: 8, marginTop: 4 }}
-                                    />
-                                </label>
-
-                                <label>
-                                    Resolver Address
-                                    <input
-                                        type="text"
-                                        value={resolverInput}
-                                        onChange={(e) => setResolverInput(e.target.value)}
-                                        placeholder="0xabc..."
-                                        style={{ width: "100%", padding: 8, marginTop: 4 }}
-                                    />
-                                </label>
-
-                                <button
-                                    type="submit"
-                                    disabled={creatingMarket}
-                                    style={{ padding: "8px 12px" }}
+                        {account && (
+                            <>
+                                <p className="label">Connected wallet</p>
+                                <a
+                                    href={sepoliaEtherscanAddress(account)}
+                                    target="_blank"
+                                    rel="noreferrer"
+                                    className="address-link"
                                 >
-                                    {creatingMarket ? "Creating…" : "Create Market"}
-                                </button>
-                            </form>
-                        ) : (
-                            <p style={{ color: "#a00" }}>
-                                Only approved creators can open new markets.
-                            </p>
+                                    {account}
+                                </a>
+                                <p className="muted">Chain: {chainId}</p>
+                            </>
                         )}
                     </div>
-                </>
-            )}
+                </header>
 
+                {status && <div className="status-banner">{status}</div>}
 
-            {status && <p>{status}</p>}
-
-            <div style={{ marginTop: 32, padding: 12, border: "1px solid #ccc", borderRadius: 8 }}>
-                <h2>Existing Markets</h2>
-                {!hasMetaMask && <p>Connect MetaMask to load markets.</p>}
-
-                {hasMetaMask && (
-                    <>
-                        <button
-                            onClick={() => {
-                                void loadMarkets();
-                            }}
-                            disabled={loadingMarkets}
-                            style={{ marginBottom: 12 }}
-                        >
-                            {loadingMarkets ? "Refreshing…" : "Refresh Markets"}
-                        </button>
-
-                        {marketsError && (
-                            <p style={{ color: "#a00" }}>{marketsError}</p>
-                        )}
-
-                        {!marketsError && !loadingMarkets && markets.length === 0 && (
-                            <p>No markets deployed yet.</p>
-                        )}
-
-                        <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-                            {markets.map((mkt) => (
-                                <div
-                                    key={mkt.market}
-                                    style={{
-                                        border: "1px solid #eee",
-                                        borderRadius: 8,
-                                        padding: 12,
-                                    }}
-                                >
-                                    <p>
-                                        <b>Question:</b> {mkt.question}
-                                    </p>
-                                    <p>
-                                        <b>Market:</b>{" "}
-                                        <a
-                                            href={sepoliaEtherscanAddress(mkt.market)}
-                                            target="_blank"
-                                            rel="noreferrer"
-                                        >
-                                            {mkt.market}
-                                        </a>
-                                    </p>
-                                    <p>
-                                        <b>Question ID:</b> {mkt.questionId}
-                                    </p>
-                                    <p>
-                                        <b>Resolver:</b>{" "}
-                                        <a
-                                            href={sepoliaEtherscanAddress(mkt.resolver)}
-                                            target="_blank"
-                                            rel="noreferrer"
-                                        >
-                                            {mkt.resolver}
-                                        </a>
-                                    </p>
-                                    <p>
-                                        <b>Close Time:</b>{" "}
-                                        {mkt.closeTime
-                                            ? new Date(mkt.closeTime * 1000).toLocaleString()
-                                            : "Unknown"}
-                                    </p>
-                                    <p>
-                                        <b>Outcome:</b>{" "}
-                                        {OUTCOME_LABEL[mkt.outcome] ?? "Unknown"}
-                                    </p>
-                                    <p>
-                                        <b>Total YES:</b> {mkt.totalYes} ETH
-                                    </p>
-                                    <p>
-                                        <b>Total NO:</b> {mkt.totalNo} ETH
-                                    </p>
-                                </div>
-                            ))}
+                {account && canCreateMarket && (
+                    <section className="card create-card">
+                        <div className="section-headline">
+                            <div>
+                                <p className="eyebrow">Creator tools</p>
+                                <h2>Create a market</h2>
+                            </div>
+                            <p className="approval-pill approval-pill--ok">Approved creator</p>
                         </div>
-                    </>
+
+                        <form className="form-grid" onSubmit={handleCreateMarket}>
+                            <label className="form-field">
+                                <span>Question</span>
+                                <input
+                                    type="text"
+                                    value={questionInput}
+                                    onChange={(e) => setQuestionInput(e.target.value)}
+                                    placeholder="Will ETH trade above $3k before June 30?"
+                                />
+                            </label>
+
+                            <label className="form-field">
+                                <span>Close time</span>
+                                <input
+                                    type="datetime-local"
+                                    value={closeTimeInput}
+                                    onChange={(e) => setCloseTimeInput(e.target.value)}
+                                />
+                            </label>
+
+                            <label className="form-field">
+                                <span>Resolver address</span>
+                                <input
+                                    type="text"
+                                    value={resolverInput}
+                                    onChange={(e) => setResolverInput(e.target.value)}
+                                    placeholder="0xabc…"
+                                />
+                            </label>
+
+                            <button className="primary" type="submit" disabled={creatingMarket}>
+                                {creatingMarket ? "Creating…" : "Deploy market"}
+                            </button>
+                        </form>
+                    </section>
                 )}
+
+                <section className="markets-section">
+                    <div className="section-headline">
+                        <div>
+                            <p className="eyebrow">Markets</p>
+                            <div className="live-headline">
+                                <h2>Live opportunities</h2>
+                                <span className="live-indicator">
+                                    <span className="live-dot" />
+                                    <span>Live</span>
+                                </span>
+                            </div>
+                        </div>
+                        {hasMetaMask && (
+                            <button
+                                className="ghost"
+                                onClick={() => {
+                                    void loadMarkets();
+                                }}
+                                disabled={loadingMarkets}
+                            >
+                                {loadingMarkets ? "Refreshing…" : "Refresh"}
+                            </button>
+                        )}
+                    </div>
+
+                    {!hasMetaMask && (
+                        <p className="muted">Connect MetaMask to view on-chain markets.</p>
+                    )}
+
+                    {hasMetaMask && (
+                        <>
+                            {marketsError && <p className="error">{marketsError}</p>}
+                            {!marketsError && !loadingMarkets && markets.length === 0 && (
+                                <p className="muted">No markets deployed yet.</p>
+                            )}
+
+                            <div className="markets-grid">
+                                {markets.map((mkt) => (
+                                    <article
+                                        className="card market-card"
+                                        key={mkt.market}
+                                        role="link"
+                                        tabIndex={0}
+                                        onClick={() => openMarketPage(mkt.market)}
+                                        onKeyDown={(event: KeyboardEvent<HTMLElement>) => {
+                                            if (event.key === "Enter" || event.key === " ") {
+                                                event.preventDefault();
+                                                openMarketPage(mkt.market);
+                                            }
+                                        }}
+                                    >
+                                        <p className="market-question">{mkt.question}</p>
+                                        <div className="market-meta">
+                                            <span>
+                                                Close:{" "}
+                                                {mkt.closeTime
+                                                    ? new Date(mkt.closeTime * 1000).toLocaleString()
+                                                    : "Unknown"}
+                                            </span>
+                                            <span>Outcome: {OUTCOME_LABEL[mkt.outcome] ?? "Unknown"}</span>
+                                        </div>
+                                        <div className="liquidity-row">
+                                            <div>
+                                                <p className="muted">Total YES</p>
+                                                <p className="liquidity">{mkt.totalYes} ETH</p>
+                                            </div>
+                                            <div>
+                                                <p className="muted">Total NO</p>
+                                                <p className="liquidity">{mkt.totalNo} ETH</p>
+                                            </div>
+                                        </div>
+                                        <div className="buy-input-row">
+                                            <input
+                                                type="number"
+                                                min="0"
+                                                step="0.0001"
+                                                placeholder="0.0 ETH"
+                                                value={buyAmounts[mkt.market] ?? ""}
+                                                onClick={(e) => e.stopPropagation()}
+                                                onChange={(e) =>
+                                                    updateBuyAmount(mkt.market, e.target.value)
+                                                }
+                                            />
+                                            <span className="muted">ETH</span>
+                                        </div>
+                                        <div className="buy-row">
+                                            <button
+                                                className="buy-button buy-button--yes"
+                                                onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    handleBuy(mkt, "Yes");
+                                                }}
+                                            >
+                                                Buy YES
+                                            </button>
+                                            <button
+                                                className="buy-button buy-button--no"
+                                                onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    handleBuy(mkt, "No");
+                                                }}
+                                            >
+                                                Buy NO
+                                            </button>
+                                        </div>
+                                        <div className="market-links">
+                                            <span>View market</span>
+                                            <a
+                                                href={sepoliaEtherscanAddress(mkt.resolver)}
+                                                target="_blank"
+                                                rel="noreferrer"
+                                                onClick={(e) => e.stopPropagation()}
+                                            >
+                                                Resolver
+                                            </a>
+                                        </div>
+                                    </article>
+                                ))}
+                            </div>
+                        </>
+                    )}
+                </section>
             </div>
         </div>
     );
