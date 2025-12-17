@@ -359,6 +359,37 @@ export default function App() {
         }
     }
 
+    async function resolveMarket(
+        market: MarketSummary,
+        outcome: OutcomeSide,
+        button?: HTMLButtonElement | null
+    ) {
+        if (!window.ethereum) return setStatus("MetaMask not detected.");
+        if (!account) return setStatus("Connect MetaMask first.");
+
+        if (account.toLowerCase() !== market.resolver.toLowerCase()) {
+            return setStatus("Only the designated resolver can resolve this market.");
+        }
+
+        try {
+            button && (button.disabled = true);
+            setStatus("Submitting resolve transaction…");
+            const provider = new BrowserProvider(window.ethereum);
+            const signer = await provider.getSigner();
+            const contract = new Contract(market.market, PredictionMarketABI, signer);
+            const tx = await contract.resolve(outcome === "Yes" ? 1 : 2);
+            setStatus("Waiting for confirmation…");
+            await tx.wait();
+            setStatus(`Resolved to ${outcome}.`);
+            await loadMarkets();
+            await loadTransactions(market.market);
+        } catch (err: any) {
+            setStatus(err?.shortMessage ?? err?.message ?? "Resolve failed.");
+        } finally {
+            button && (button.disabled = false);
+        }
+    }
+
     function updateBuyAmount(marketAddress: string, value: string) {
         setBuyAmounts((prev) => ({
             ...prev,
@@ -563,6 +594,35 @@ export default function App() {
                                         Buy NO · {noPct}%
                                     </button>
                                 </div>
+
+                                {account.toLowerCase() === market.resolver.toLowerCase() && (
+                                    <div className="resolve-row">
+                                        <button
+                                            className="resolve-button resolve-button--yes"
+                                            onClick={(e) =>
+                                                resolveMarket(
+                                                    market,
+                                                    "Yes",
+                                                    e.currentTarget
+                                                )
+                                            }
+                                        >
+                                            Resolve YES
+                                        </button>
+                                        <button
+                                            className="resolve-button resolve-button--no"
+                                            onClick={(e) =>
+                                                resolveMarket(
+                                                    market,
+                                                    "No",
+                                                    e.currentTarget
+                                                )
+                                            }
+                                        >
+                                            Resolve NO
+                                        </button>
+                                    </div>
+                                )}
 
                                 <div className="transactions-section">
                                     <div className="section-headline">
