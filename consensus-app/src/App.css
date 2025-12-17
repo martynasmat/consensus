@@ -265,17 +265,6 @@ body {
   color: #9aaad8;
 }
 
-.liquidity-row {
-  display: flex;
-  justify-content: space-between;
-}
-
-.liquidity {
-  font-size: 1.1rem;
-  font-weight: 600;
-  margin: 4px 0 0;
-}
-
 .buy-row {
   display: flex;
   gap: 12px;
@@ -320,12 +309,32 @@ body {
   transform: translateY(-1px);
 }
 
+.buy-button:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+  transform: none;
+}
+
 .buy-button--yes {
   background: linear-gradient(135deg, #00b77e, #00df9a);
 }
 
 .buy-button--no {
   background: linear-gradient(135deg, #f87171, #ef4444);
+}
+
+.potential-popup {
+  background: rgba(14, 20, 38, 0.95);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 12px;
+  padding: 10px 14px;
+  font-size: 0.85rem;
+  color: #d6e1ff;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.4);
+}
+
+.potential-popup p {
+  margin: 4px 0;
 }
 
 .market-links {

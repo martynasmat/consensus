@@ -472,7 +472,25 @@ export default function App() {
                             )}
 
                             <div className="markets-grid">
-                                {markets.map((mkt) => (
+                                {markets.map((mkt) => {
+                                    const yesFloat = Number(mkt.totalYes) || 0;
+                                    const noFloat = Number(mkt.totalNo) || 0;
+                                    const pool = yesFloat + noFloat;
+                                    const yesPct = pool > 0 ? Math.round((yesFloat / pool) * 100) : 50;
+                                    const noPct = 100 - yesPct;
+                                    const amountValue = buyAmounts[mkt.market] ?? "";
+                                    const amountNumber = Number(amountValue);
+                                    const hasAmount =
+                                        Boolean(amountValue) &&
+                                        Number.isFinite(amountNumber) &&
+                                        amountNumber > 0;
+                                    const potentialYes = hasAmount
+                                        ? estimatePotential(amountNumber, yesFloat, noFloat, "Yes")
+                                        : "";
+                                    const potentialNo = hasAmount
+                                        ? estimatePotential(amountNumber, yesFloat, noFloat, "No")
+                                        : "";
+                                    return (
                                     <article
                                         className="card market-card"
                                         key={mkt.market}
@@ -496,23 +514,13 @@ export default function App() {
                                             </span>
                                             <span>Outcome: {OUTCOME_LABEL[mkt.outcome] ?? "Unknown"}</span>
                                         </div>
-                                        <div className="liquidity-row">
-                                            <div>
-                                                <p className="muted">Total YES</p>
-                                                <p className="liquidity">{mkt.totalYes} ETH</p>
-                                            </div>
-                                            <div>
-                                                <p className="muted">Total NO</p>
-                                                <p className="liquidity">{mkt.totalNo} ETH</p>
-                                            </div>
-                                        </div>
                                         <div className="buy-input-row">
                                             <input
                                                 type="number"
                                                 min="0"
                                                 step="0.0001"
                                                 placeholder="0.0 ETH"
-                                                value={buyAmounts[mkt.market] ?? ""}
+                                                value={amountValue}
                                                 onClick={(e) => e.stopPropagation()}
                                                 onChange={(e) =>
                                                     updateBuyAmount(mkt.market, e.target.value)
@@ -520,6 +528,15 @@ export default function App() {
                                             />
                                             <span className="muted">ETH</span>
                                         </div>
+                                        {hasAmount && (
+                                            <div
+                                                className="potential-popup"
+                                                onClick={(e) => e.stopPropagation()}
+                                            >
+                                                <p>Potential YES win: {potentialYes} ETH</p>
+                                                <p>Potential NO win: {potentialNo} ETH</p>
+                                            </div>
+                                        )}
                                         <div className="buy-row">
                                             <button
                                                 className="buy-button buy-button--yes"
@@ -527,8 +544,9 @@ export default function App() {
                                                     e.stopPropagation();
                                                     handleBuy(mkt, "Yes");
                                                 }}
+                                                disabled={!hasAmount}
                                             >
-                                                Buy YES
+                                                Buy YES · {yesPct}%
                                             </button>
                                             <button
                                                 className="buy-button buy-button--no"
@@ -536,8 +554,9 @@ export default function App() {
                                                     e.stopPropagation();
                                                     handleBuy(mkt, "No");
                                                 }}
+                                                disabled={!hasAmount}
                                             >
-                                                Buy NO
+                                                Buy NO · {noPct}%
                                             </button>
                                         </div>
                                         <div className="market-links">
@@ -552,7 +571,8 @@ export default function App() {
                                             </a>
                                         </div>
                                     </article>
-                                ))}
+                                );
+                            })}
                             </div>
                         </>
                     )}
@@ -560,4 +580,19 @@ export default function App() {
             </div>
         </div>
     );
+}
+
+function estimatePotential(
+    amount: number,
+    yesPool: number,
+    noPool: number,
+    side: OutcomeSide
+): string {
+    if (amount <= 0) return "0.000";
+    const pool = yesPool + noPool;
+    const totalAfter = pool + amount;
+    const winningPool = side === "Yes" ? yesPool + amount : noPool + amount;
+    if (winningPool <= 0) return amount.toFixed(3);
+    const payout = (amount * totalAfter) / winningPool;
+    return payout.toFixed(3);
 }
