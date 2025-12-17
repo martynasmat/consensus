@@ -544,7 +544,6 @@ export default function App() {
                                                     e.stopPropagation();
                                                     handleBuy(mkt, "Yes");
                                                 }}
-                                                disabled={!hasAmount}
                                             >
                                                 Buy YES · {yesPct}%
                                             </button>
@@ -554,7 +553,6 @@ export default function App() {
                                                     e.stopPropagation();
                                                     handleBuy(mkt, "No");
                                                 }}
-                                                disabled={!hasAmount}
                                             >
                                                 Buy NO · {noPct}%
                                             </button>

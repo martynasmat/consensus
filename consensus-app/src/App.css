@@ -309,12 +309,6 @@ body {
   transform: translateY(-1px);
 }
 
-.buy-button:disabled {
-  opacity: 0.4;
-  cursor: not-allowed;
-  transform: none;
-}
-
 .buy-button--yes {
   background: linear-gradient(135deg, #00b77e, #00df9a);
 }
