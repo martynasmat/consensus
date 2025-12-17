@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import type { FormEvent, KeyboardEvent } from "react";
 import { BrowserProvider, Contract, formatEther, parseEther } from "ethers";
+import { useNavigate, useMatch } from "react-router-dom";
 import { CONFIG } from "./config.ts";
 import { MarketFactoryABI } from "./abi/MarketFactory.ts";
 import { PredictionMarketABI } from "./abi/PredictionMarket.ts";
@@ -47,6 +48,13 @@ export default function App() {
     const [loadingMarkets, setLoadingMarkets] = useState(false);
     const [marketsError, setMarketsError] = useState("");
     const [buyAmounts, setBuyAmounts] = useState<Record<string, string>>({});
+    const navigate = useNavigate();
+    const marketMatch = useMatch("/market/:address");
+    const viewedMarketAddress = marketMatch?.params?.address?.toLowerCase();
+    const viewedMarket = viewedMarketAddress
+        ? markets.find((m) => m.market.toLowerCase() === viewedMarketAddress)
+        : null;
+    const viewingMarketPage = Boolean(marketMatch);
 
     useEffect(() => {
         setHasMetaMask(Boolean(window.ethereum));
@@ -144,10 +152,6 @@ export default function App() {
 
     const sepoliaEtherscanAddress = (addr: string) =>
         `https://sepolia.etherscan.io/address/${addr}`;
-
-    const openMarketPage = (addr: string) => {
-        window.open(sepoliaEtherscanAddress(addr), "_blank");
-    };
 
 
     const loadMarkets = useCallback(async () => {
@@ -347,6 +351,175 @@ export default function App() {
 
     const canCreateMarket = isApprovedCreator === true;
 
+    const renderWalletCard = () => (
+        <div className="card wallet-card">
+            {!hasMetaMask && (
+                <p className="muted">Install MetaMask to get started.</p>
+            )}
+
+            {hasMetaMask && !account && (
+                <button className="primary" onClick={connect}>
+                    Connect MetaMask
+                </button>
+            )}
+
+            {account && (
+                <>
+                    <p className="label">Connected wallet</p>
+                    <a
+                        href={sepoliaEtherscanAddress(account)}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="address-link"
+                    >
+                        {account}
+                    </a>
+                    <p className="muted">Chain: {chainId}</p>
+                </>
+            )}
+        </div>
+    );
+
+    if (viewingMarketPage) {
+        const market = viewedMarket;
+        const yesFloat = market ? Number(market.totalYes) || 0 : 0;
+        const noFloat = market ? Number(market.totalNo) || 0 : 0;
+        const pool = yesFloat + noFloat;
+        const yesPct = pool > 0 ? Math.round((yesFloat / pool) * 100) : 50;
+        const noPct = 100 - yesPct;
+        const amountValue = market ? buyAmounts[market.market] ?? "" : "";
+        const amountNumber = Number(amountValue);
+        const hasAmount =
+            Boolean(amountValue) && Number.isFinite(amountNumber) && amountNumber > 0;
+        const potentialYes = market && hasAmount
+            ? estimatePotential(amountNumber, yesFloat, noFloat, "Yes")
+            : "";
+        const potentialNo = market && hasAmount
+            ? estimatePotential(amountNumber, yesFloat, noFloat, "No")
+            : "";
+
+        return (
+            <div className="app">
+                <div className="app-shell">
+                    <header className="hero">
+                        <div>
+                            <button className="ghost back-button" onClick={() => navigate("/")}>
+                                ← Back to markets
+                            </button>
+                            <p className="eyebrow">Market</p>
+                            <h1>{market ? market.question : "Market not found"}</h1>
+                            <p className="hero-subtitle">
+                                Trade this market directly on-chain. Data refreshes live from Sepolia.
+                            </p>
+                        </div>
+                        {renderWalletCard()}
+                    </header>
+
+                    {status && <div className="status-banner">{status}</div>}
+
+                    <section className="card detail-card">
+                        {market ? (
+                            <>
+                                <div className="detail-meta">
+                                    <div>
+                                        <p className="muted">Market address</p>
+                                        <a
+                                            href={sepoliaEtherscanAddress(market.market)}
+                                            target="_blank"
+                                            rel="noreferrer"
+                                            className="address-link"
+                                        >
+                                            {market.market}
+                                        </a>
+                                    </div>
+                                    <div>
+                                        <p className="muted">Resolver</p>
+                                        <a
+                                            href={sepoliaEtherscanAddress(market.resolver)}
+                                            target="_blank"
+                                            rel="noreferrer"
+                                            className="address-link"
+                                        >
+                                            {market.resolver}
+                                        </a>
+                                    </div>
+                                    <div>
+                                        <p className="muted">Close time</p>
+                                        <p>
+                                            {market.closeTime
+                                                ? new Date(market.closeTime * 1000).toLocaleString()
+                                                : "Unknown"}
+                                        </p>
+                                    </div>
+                                </div>
+
+                                <div className="detail-stats">
+                                    <div>
+                                        <p className="muted">Total YES</p>
+                                        <p className="liquidity">{market.totalYes} ETH</p>
+                                    </div>
+                                    <div>
+                                        <p className="muted">Total NO</p>
+                                        <p className="liquidity">{market.totalNo} ETH</p>
+                                    </div>
+                                    <div>
+                                        <p className="muted">Outcome</p>
+                                        <p className="liquidity">
+                                            {OUTCOME_LABEL[market.outcome] ?? "Unknown"}
+                                        </p>
+                                    </div>
+                                </div>
+
+                                <div className="buy-input-row">
+                                    <input
+                                        type="number"
+                                        min="0"
+                                        step="0.0001"
+                                        placeholder="0.0 ETH"
+                                        value={amountValue}
+                                        onChange={(e) =>
+                                            updateBuyAmount(market.market, e.target.value)
+                                        }
+                                    />
+                                    <span className="muted">ETH</span>
+                                </div>
+
+                                {hasAmount && (
+                                    <div className="potential-popup">
+                                        <p>Potential YES win: {potentialYes} ETH</p>
+                                        <p>Potential NO win: {potentialNo} ETH</p>
+                                    </div>
+                                )}
+
+                                <div className="buy-row">
+                                    <button
+                                        className="buy-button buy-button--yes"
+                                        onClick={() => handleBuy(market, "Yes")}
+                                    >
+                                        Buy YES · {yesPct}%
+                                    </button>
+                                    <button
+                                        className="buy-button buy-button--no"
+                                        onClick={() => handleBuy(market, "No")}
+                                    >
+                                        Buy NO · {noPct}%
+                                    </button>
+                                </div>
+                            </>
+                        ) : (
+                            <div>
+                                <p>We couldn’t find that market. It might not be deployed yet.</p>
+                                <button className="primary" onClick={() => navigate("/")}>
+                                    Back to markets
+                                </button>
+                            </div>
+                        )}
+                    </section>
+                </div>
+            </div>
+        );
+    }
+
     return (
         <div className="app">
             <div className="app-shell">
@@ -358,32 +531,7 @@ export default function App() {
                             Launch, resolve, and trade binary markets directly on Sepolia.
                         </p>
                     </div>
-                    <div className="card wallet-card">
-                        {!hasMetaMask && (
-                            <p className="muted">Install MetaMask to get started.</p>
-                        )}
-
-                        {hasMetaMask && !account && (
-                            <button className="primary" onClick={connect}>
-                                Connect MetaMask
-                            </button>
-                        )}
-
-                        {account && (
-                            <>
-                                <p className="label">Connected wallet</p>
-                                <a
-                                    href={sepoliaEtherscanAddress(account)}
-                                    target="_blank"
-                                    rel="noreferrer"
-                                    className="address-link"
-                                >
-                                    {account}
-                                </a>
-                                <p className="muted">Chain: {chainId}</p>
-                            </>
-                        )}
-                    </div>
+                    {renderWalletCard()}
                 </header>
 
                 {status && <div className="status-banner">{status}</div>}
@@ -496,11 +644,11 @@ export default function App() {
                                         key={mkt.market}
                                         role="link"
                                         tabIndex={0}
-                                        onClick={() => openMarketPage(mkt.market)}
+                                        onClick={() => navigate(`/market/${mkt.market}`)}
                                         onKeyDown={(event: KeyboardEvent<HTMLElement>) => {
                                             if (event.key === "Enter" || event.key === " ") {
                                                 event.preventDefault();
-                                                openMarketPage(mkt.market);
+                                                navigate(`/market/${mkt.market}`);
                                             }
                                         }}
                                     >
@@ -558,7 +706,14 @@ export default function App() {
                                             </button>
                                         </div>
                                         <div className="market-links">
-                                            <span>View market</span>
+                                            <a
+                                                href={sepoliaEtherscanAddress(mkt.market)}
+                                                target="_blank"
+                                                rel="noreferrer"
+                                                onClick={(e) => e.stopPropagation()}
+                                            >
+                                                View on Etherscan
+                                            </a>
                                             <a
                                                 href={sepoliaEtherscanAddress(mkt.resolver)}
                                                 target="_blank"

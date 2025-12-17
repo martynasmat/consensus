@@ -388,3 +388,35 @@ body {
     align-items: flex-start;
   }
 }
+.back-button {
+  margin-bottom: 8px;
+}
+
+.detail-card {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.detail-meta {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 16px;
+}
+
+.detail-stats {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: 16px;
+}
+
+.detail-stats .liquidity {
+  margin: 6px 0 0;
+  font-size: 1.4rem;
+}
+
+.liquidity {
+  font-size: 1.1rem;
+  font-weight: 600;
+  margin: 4px 0 0;
+}
