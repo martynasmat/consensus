@@ -1,8 +1,9 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import type { FormEvent } from "react";
-import { BrowserProvider, Contract, id } from "ethers";
+import { BrowserProvider, Contract, formatEther } from "ethers";
 import { CONFIG } from "./config.ts";
 import { MarketFactoryABI } from "./abi/MarketFactory.ts";
+import { PredictionMarketABI } from "./abi/PredictionMarket.ts";
 import "./App.css";
 
 declare global {
@@ -12,6 +13,23 @@ declare global {
 }
 
 const FACTORY_ADDRESS = CONFIG.FACTORY_ADDRESS;
+
+type MarketSummary = {
+    market: string;
+    question: string;
+    questionId: string;
+    closeTime: number;
+    resolver: string;
+    outcome: number;
+    totalYes: string;
+    totalNo: string;
+};
+
+const OUTCOME_LABEL: Record<number, string> = {
+    0: "Unresolved",
+    1: "Yes",
+    2: "No",
+};
 
 export default function App() {
     const [hasMetaMask, setHasMetaMask] = useState(false);
@@ -26,6 +44,9 @@ export default function App() {
     const [questionInput, setQuestionInput] = useState("");
     const [closeTimeInput, setCloseTimeInput] = useState("");
     const [resolverInput, setResolverInput] = useState("");
+    const [markets, setMarkets] = useState<MarketSummary[]>([]);
+    const [loadingMarkets, setLoadingMarkets] = useState(false);
+    const [marketsError, setMarketsError] = useState("");
 
     useEffect(() => {
         setHasMetaMask(Boolean(window.ethereum));
@@ -148,6 +169,84 @@ export default function App() {
         }
     }
 
+    const loadMarkets = useCallback(async () => {
+        if (!window.ethereum) {
+            setMarkets([]);
+            setMarketsError("MetaMask not detected.");
+            return;
+        }
+
+        try {
+            setLoadingMarkets(true);
+            setMarketsError("");
+
+            const provider = new BrowserProvider(window.ethereum);
+            const factory = new Contract(FACTORY_ADDRESS, MarketFactoryABI, provider);
+            const count = Number(await factory.marketsCount());
+            if (!Number.isFinite(count) || count < 1) {
+                setMarkets([]);
+                return;
+            }
+
+            const indices = Array.from({ length: count }, (_, i) => i);
+            const marketAddresses: string[] = await Promise.all(
+                indices.map((idx) => factory.markets(idx))
+            );
+
+            const summaries: MarketSummary[] = await Promise.all(
+                marketAddresses.map(async (marketAddr) => {
+            const marketContract = new Contract(
+                marketAddr,
+                PredictionMarketABI,
+                provider
+            );
+            const [
+                questionId,
+                question,
+                closeTime,
+                resolver,
+                outcome,
+                totalYes,
+                totalNo,
+            ] = await Promise.all([
+                marketContract.questionId(),
+                marketContract.question(),
+                marketContract.closeTime(),
+                marketContract.resolver(),
+                marketContract.outcome(),
+                marketContract.totalYes(),
+                marketContract.totalNo(),
+            ]);
+
+            return {
+                market: marketAddr,
+                question,
+                questionId: questionId.toString(),
+                closeTime: Number(closeTime),
+                resolver,
+                outcome: Number(outcome),
+                totalYes: formatEther(totalYes),
+                totalNo: formatEther(totalNo),
+            };
+        })
+    );
+
+            setMarkets(summaries);
+        } catch (err: any) {
+            setMarketsError(
+                err?.shortMessage ?? err?.message ?? "Failed to fetch markets."
+            );
+            setMarkets([]);
+        } finally {
+            setLoadingMarkets(false);
+        }
+    }, []);
+
+    useEffect(() => {
+        if (!hasMetaMask) return;
+        void loadMarkets();
+    }, [hasMetaMask, loadMarkets]);
+
     async function handleCreateMarket(event?: FormEvent<HTMLFormElement>) {
         event?.preventDefault();
 
@@ -170,18 +269,18 @@ export default function App() {
 
         try {
             setCreatingMarket(true);
-            setStatus("Submitting createMarket transaction…");
+            setStatus("Confirm the createMarket transaction in MetaMask…");
             const provider = new BrowserProvider(window.ethereum);
             const signer = await provider.getSigner();
             const factory = new Contract(FACTORY_ADDRESS, MarketFactoryABI, signer);
-            const questionId = id(trimmedQuestion);
-
             const tx = await factory.createMarket(
-                questionId,
+                trimmedQuestion,
                 closeTimeSeconds,
                 resolverInput
             );
-            setStatus("Waiting for transaction confirmation…");
+            setStatus(
+                `Transaction sent. Waiting for confirmation… (hash: ${tx.hash})`
+            );
             const receipt = await tx.wait();
 
             let createdAddress = "";
@@ -213,6 +312,7 @@ export default function App() {
             setQuestionInput("");
             setCloseTimeInput("");
             setResolverInput("");
+            await loadMarkets();
         } catch (err: any) {
             setStatus(err?.shortMessage ?? err?.message ?? "createMarket failed.");
         } finally {
@@ -326,6 +426,89 @@ export default function App() {
 
 
             {status && <p>{status}</p>}
+
+            <div style={{ marginTop: 32, padding: 12, border: "1px solid #ccc", borderRadius: 8 }}>
+                <h2>Existing Markets</h2>
+                {!hasMetaMask && <p>Connect MetaMask to load markets.</p>}
+
+                {hasMetaMask && (
+                    <>
+                        <button
+                            onClick={() => {
+                                void loadMarkets();
+                            }}
+                            disabled={loadingMarkets}
+                            style={{ marginBottom: 12 }}
+                        >
+                            {loadingMarkets ? "Refreshing…" : "Refresh Markets"}
+                        </button>
+
+                        {marketsError && (
+                            <p style={{ color: "#a00" }}>{marketsError}</p>
+                        )}
+
+                        {!marketsError && !loadingMarkets && markets.length === 0 && (
+                            <p>No markets deployed yet.</p>
+                        )}
+
+                        <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+                            {markets.map((mkt) => (
+                                <div
+                                    key={mkt.market}
+                                    style={{
+                                        border: "1px solid #eee",
+                                        borderRadius: 8,
+                                        padding: 12,
+                                    }}
+                                >
+                                    <p>
+                                        <b>Question:</b> {mkt.question}
+                                    </p>
+                                    <p>
+                                        <b>Market:</b>{" "}
+                                        <a
+                                            href={sepoliaEtherscanAddress(mkt.market)}
+                                            target="_blank"
+                                            rel="noreferrer"
+                                        >
+                                            {mkt.market}
+                                        </a>
+                                    </p>
+                                    <p>
+                                        <b>Question ID:</b> {mkt.questionId}
+                                    </p>
+                                    <p>
+                                        <b>Resolver:</b>{" "}
+                                        <a
+                                            href={sepoliaEtherscanAddress(mkt.resolver)}
+                                            target="_blank"
+                                            rel="noreferrer"
+                                        >
+                                            {mkt.resolver}
+                                        </a>
+                                    </p>
+                                    <p>
+                                        <b>Close Time:</b>{" "}
+                                        {mkt.closeTime
+                                            ? new Date(mkt.closeTime * 1000).toLocaleString()
+                                            : "Unknown"}
+                                    </p>
+                                    <p>
+                                        <b>Outcome:</b>{" "}
+                                        {OUTCOME_LABEL[mkt.outcome] ?? "Unknown"}
+                                    </p>
+                                    <p>
+                                        <b>Total YES:</b> {mkt.totalYes} ETH
+                                    </p>
+                                    <p>
+                                        <b>Total NO:</b> {mkt.totalNo} ETH
+                                    </p>
+                                </div>
+                            ))}
+                        </div>
+                    </>
+                )}
+            </div>
         </div>
     );
 }

@@ -12,7 +12,7 @@
 - `owner`
    - valdo patvirtintų kūrėjų `creator` sąrašą ir nusprendžia, kas gali kurti naujas rinkas/lažybas.
 - `creator`
-   - patvirtintas kūrėjas, įgalintas kurti naujas rinkas/lažybas `PredictionMarket(questionId, closeTime, resolver)`.
+   - patvirtintas kūrėjas, įgalintas kurti naujas rinkas/lažybas `PredictionMarket(question, closeTime, resolver)`.
 - `trader`
    - stato ETH už YES/NO.
 - `resolver`
@@ -22,7 +22,8 @@
 
 ## Duomenys
 Kiekviena rinka `PredictionMarket` turi:
-- `questionId`: klausimo identifikatorių `keccak256(klausimo_tekstas)`
+- `question`: klausimas tekstu, saugomas grandinėje
+- `questionId`: klausimo identifikatorių `keccak256(question)`
 - `closeTime`: *UNIX timestamp*, iki kurio galima statyti
 - `resolver`: adresas, kuris gali nustatyti rezultatą
 - `outcome`: `Unresolved / Yes / No`
@@ -39,8 +40,8 @@ Kiekviena rinka `PredictionMarket` turi:
 
 ### 2) Rinkos `PredictionMarket` sukūrimas
 **Tikslas:** Patvirtintas kūrėjas sukuria naujas lažybas/rinką.
-- Patvirtintas `creator` kviečia `MarketFactory.createMarket(questionId, closeTime, resolver)`.
-- `MarketFactory` sukuria naują `PredictionMarket`.
+- Patvirtintas `creator` kviečia `MarketFactory.createMarket(question, closeTime, resolver)`.
+- `MarketFactory` sukuria naują `PredictionMarket` (viduje generuojamas `questionId`).
 - `MarketFactory` įrašo `PredictionMarket` adresą į sąrašą ir *emit'ina* `MarketCreated` event.
 
 ### 3) Statymas

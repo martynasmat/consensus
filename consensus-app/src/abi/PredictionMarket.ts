@@ -1,5 +1,6 @@
 export const PredictionMarketABI = [
     "function questionId() view returns (bytes32)",
+    "function question() view returns (string)",
     "function closeTime() view returns (uint256)",
     "function resolver() view returns (address)",
     "function outcome() view returns (uint8)", // 0 Unresolved, 1 Yes, 2 No

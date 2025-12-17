@@ -54,11 +54,11 @@ contract("Consensus PredictionMarket (separate tests)", (accounts) => {
 
   describe("Factory allowlist", () => {
     it("rejects unapproved creator", async () => {
-      const qid = web3.utils.keccak256("Will ETH go up tomorrow?");
+      const question = "Will ETH go up tomorrow?";
       const closeTime = (await latestTimestamp()) + 30;
 
       await expectRevert(
-        factory.createMarket(qid, closeTime, resolver, { from: creator })
+        factory.createMarket(question, closeTime, resolver, { from: creator })
       );
     });
 
@@ -71,10 +71,10 @@ contract("Consensus PredictionMarket (separate tests)", (accounts) => {
     it("approved creator can create market and MarketCreated emits", async () => {
       await factory.setApprovedCreator(creator, true, { from: owner });
 
-      const qid = web3.utils.keccak256("Market create event test");
+      const question = "Market create event test";
       const closeTime = (await latestTimestamp()) + 30;
 
-      const tx = await factory.createMarket(qid, closeTime, resolver, { from: creator });
+      const tx = await factory.createMarket(question, closeTime, resolver, { from: creator });
 
       const created = tx.logs.find((l) => l.event === "MarketCreated");
       assert.ok(created, "MarketCreated event not found");
@@ -83,6 +83,10 @@ contract("Consensus PredictionMarket (separate tests)", (accounts) => {
       const market = await PredictionMarket.at(created.args.market);
       const storedResolver = await market.resolver();
       assert.equal(storedResolver, resolver, "resolver mismatch");
+      const storedQuestion = await market.question();
+      assert.equal(storedQuestion, question, "question mismatch");
+      const storedQuestionId = await market.questionId();
+      assert.equal(storedQuestionId, web3.utils.keccak256(question), "questionId mismatch");
     });
   });
 
@@ -90,10 +94,10 @@ contract("Consensus PredictionMarket (separate tests)", (accounts) => {
     async function setupMarket({ closeIn = 30 } = {}) {
       await factory.setApprovedCreator(creator, true, { from: owner });
 
-      const qid = web3.utils.keccak256("Lifecycle test market");
+      const question = "Lifecycle test market";
       const closeTime = (await latestTimestamp()) + closeIn;
 
-      const tx = await factory.createMarket(qid, closeTime, resolver, { from: creator });
+      const tx = await factory.createMarket(question, closeTime, resolver, { from: creator });
       const marketAddr = tx.logs.find((l) => l.event === "MarketCreated").args.market;
 
       const market = await PredictionMarket.at(marketAddr);

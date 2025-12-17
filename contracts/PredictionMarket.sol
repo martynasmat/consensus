@@ -12,6 +12,7 @@ contract PredictionMarket {
     address public immutable feeRecipient;
     uint256 public immutable closeTime;
     bytes32 public immutable questionId;
+    string public question;
 
     Outcome public outcome;
 
@@ -38,21 +39,24 @@ contract PredictionMarket {
     error NothingToRedeem();
     error NotFeeRecipient();
     error ZeroAddress();
+    error EmptyQuestion();
 
     constructor(
-        bytes32 _questionId,
+        string memory _question,
         uint256 _closeTime,
         address _resolver,
         address _feeRecipient
     ) {
         if (_resolver == address(0) || _feeRecipient == address(0)) revert ZeroAddress();
+        if (bytes(_question).length == 0) revert EmptyQuestion();
         require(_closeTime > block.timestamp, "closeTime<=now");
 
         creator = msg.sender;
         resolver = _resolver;
         feeRecipient = _feeRecipient;
         closeTime = _closeTime;
-        questionId = _questionId;
+        question = _question;
+        questionId = keccak256(bytes(_question));
         outcome = Outcome.Unresolved;
     }
 

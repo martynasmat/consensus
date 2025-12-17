@@ -15,12 +15,14 @@ contract MarketFactory {
         address indexed resolver,
         address feeRecipient,
         bytes32 questionId,
+        string question,
         uint256 closeTime
     );
 
     error NotOwner();
     error NotApprovedCreator();
     error ZeroAddress();
+    error EmptyQuestion();
 
     modifier onlyOwner() {
         if (msg.sender != owner) revert NotOwner();
@@ -38,19 +40,21 @@ contract MarketFactory {
         emit CreatorApprovalChanged(creator, approved);
     }
 
-    function createMarket(bytes32 questionId, uint256 closeTime, address resolver)
+    function createMarket(string calldata question, uint256 closeTime, address resolver)
         external
         returns (address market)
     {
         if (!approvedCreator[msg.sender]) revert NotApprovedCreator();
         if (resolver == address(0)) revert ZeroAddress();
+        if (bytes(question).length == 0) revert EmptyQuestion();
         require(closeTime > block.timestamp, "closeTime<=now");
 
-        PredictionMarket m = new PredictionMarket(questionId, closeTime, resolver, owner);
+        PredictionMarket m = new PredictionMarket(question, closeTime, resolver, owner);
         market = address(m);
 
         markets.push(market);
-        emit MarketCreated(market, msg.sender, resolver, owner, questionId, closeTime);
+        bytes32 questionId = keccak256(bytes(question));
+        emit MarketCreated(market, msg.sender, resolver, owner, questionId, question, closeTime);
     }
 
     function marketsCount() external view returns (uint256) {
