@@ -9,7 +9,7 @@
 - `MarketFactory` sukuria naują `PredictionMarket`,
 - vartotojai stato ETH už **YES** arba **NO** (platforma pasilieka 0.5% mokestį nuo statymo sumos),
 - po laiko `closeTime` `resolver` nustato laimėjusį rezultatą,
-- - laimėtojai išsimoka laimėtą sumą,
+- laimėtojai išsimoka laimėtą sumą,
 - `feeRecipient` išsimoka sukauptą mokesčių sumą.
 
 ### Sekų diagrama
@@ -105,8 +105,21 @@ Factory allowlist
 
 ## Svetainė
 
-Naudotojo sąsaja kurta su React ir Vite įrankiais.
+Naudotojo sąsaja kurta naudojantis React ir Vite.
 Svetainės paleidimo lokaliai žingsniai:
 1) `cd ./consensus-app/`
 2) `npm install`
 3) `npm run dev`
+
+### Pagrindinis lapas (administratoriaus vaizdas)
+<img width="1074" height="892" alt="image" src="https://github.com/user-attachments/assets/271b4669-2536-44b8-9f0a-0fe9fb02d7d4" />
+
+### Pagrindinis lapas (paprasto naudotojo vaizdas)
+<img width="1134" height="424" alt="image" src="https://github.com/user-attachments/assets/832ed680-80b9-449b-b0ab-e0afabd07c94" />
+
+### Lažybų lapas (administratoriaus vaizdas)
+<img width="1068" height="810" alt="image" src="https://github.com/user-attachments/assets/439ffc5a-40dd-40c5-aff7-8e6d5465c650" />
+
+### Lažybų lapas (paprasto naudotojo vaizdas)
+<img width="1078" height="843" alt="image" src="https://github.com/user-attachments/assets/1c09d401-6b0f-480f-ace5-54bc7526d27a" />
+
