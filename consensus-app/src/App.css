@@ -94,6 +94,11 @@ body {
   font-family: "Space Mono", "JetBrains Mono", monospace;
   text-decoration: none;
   word-break: break-all;
+  transition: color 0.2s ease;
+}
+
+.address-link:hover {
+  color: #8b5cf6;
 }
 
 .muted {
@@ -275,6 +280,12 @@ body {
   font-size: 1.05rem;
   margin: 0;
   font-weight: 600;
+  min-height: 2.8em;
+  line-height: 1.4;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
 }
 
 .market-meta {
@@ -283,6 +294,16 @@ body {
   gap: 12px;
   font-size: 0.78rem;
   color: #9aaad8;
+}
+
+.icon-button {
+  width: 36px;
+  height: 36px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.2rem;
+  padding: 0;
 }
 
 .buy-row {
@@ -446,6 +467,12 @@ body {
   text-decoration: none;
   color: #f5f7fb;
   background: rgba(8, 12, 24, 0.9);
+  transition: background 0.2s ease, border 0.2s ease;
+}
+
+.transaction-row:hover {
+  background: rgba(12, 18, 36, 0.95);
+  border-color: rgba(103, 232, 249, 0.3);
 }
 
 .transaction-type {

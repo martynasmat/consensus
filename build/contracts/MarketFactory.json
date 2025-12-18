@@ -111,8 +111,7 @@
         }
       ],
       "stateMutability": "view",
-      "type": "function",
-      "constant": true
+      "type": "function"
     },
     {
       "inputs": [
@@ -131,8 +130,7 @@
         }
       ],
       "stateMutability": "view",
-      "type": "function",
-      "constant": true
+      "type": "function"
     },
     {
       "inputs": [],
@@ -145,8 +143,7 @@
         }
       ],
       "stateMutability": "view",
-      "type": "function",
-      "constant": true
+      "type": "function"
     },
     {
       "inputs": [
@@ -206,8 +203,7 @@
         }
       ],
       "stateMutability": "view",
-      "type": "function",
-      "constant": true
+      "type": "function"
     }
   ],
   "metadata": "{\"compiler\":{\"version\":\"0.8.20+commit.a1b79de6\"},\"language\":\"Solidity\",\"output\":{\"abi\":[{\"inputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"constructor\"},{\"inputs\":[],\"name\":\"EmptyQuestion\",\"type\":\"error\"},{\"inputs\":[],\"name\":\"NotApprovedCreator\",\"type\":\"error\"},{\"inputs\":[],\"name\":\"NotOwner\",\"type\":\"error\"},{\"inputs\":[],\"name\":\"ZeroAddress\",\"type\":\"error\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":true,\"internalType\":\"address\",\"name\":\"creator\",\"type\":\"address\"},{\"indexed\":false,\"internalType\":\"bool\",\"name\":\"approved\",\"type\":\"bool\"}],\"name\":\"CreatorApprovalChanged\",\"type\":\"event\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":true,\"internalType\":\"address\",\"name\":\"market\",\"type\":\"address\"},{\"indexed\":true,\"internalType\":\"address\",\"name\":\"creator\",\"type\":\"address\"},{\"indexed\":true,\"internalType\":\"address\",\"name\":\"resolver\",\"type\":\"address\"},{\"indexed\":false,\"internalType\":\"address\",\"name\":\"feeRecipient\",\"type\":\"address\"},{\"indexed\":false,\"internalType\":\"bytes32\",\"name\":\"questionId\",\"type\":\"bytes32\"},{\"indexed\":false,\"internalType\":\"string\",\"name\":\"question\",\"type\":\"string\"},{\"indexed\":false,\"internalType\":\"uint256\",\"name\":\"closeTime\",\"type\":\"uint256\"}],\"name\":\"MarketCreated\",\"type\":\"event\"},{\"inputs\":[{\"internalType\":\"address\",\"name\":\"\",\"type\":\"address\"}],\"name\":\"approvedCreator\",\"outputs\":[{\"internalType\":\"bool\",\"name\":\"\",\"type\":\"bool\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"string\",\"name\":\"question\",\"type\":\"string\"},{\"internalType\":\"uint256\",\"name\":\"closeTime\",\"type\":\"uint256\"},{\"internalType\":\"address\",\"name\":\"resolver\",\"type\":\"address\"}],\"name\":\"createMarket\",\"outputs\":[{\"internalType\":\"address\",\"name\":\"market\",\"type\":\"address\"}],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"uint256\",\"name\":\"\",\"type\":\"uint256\"}],\"name\":\"markets\",\"outputs\":[{\"internalType\":\"address\",\"name\":\"\",\"type\":\"address\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"marketsCount\",\"outputs\":[{\"internalType\":\"uint256\",\"name\":\"\",\"type\":\"uint256\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"owner\",\"outputs\":[{\"internalType\":\"address\",\"name\":\"\",\"type\":\"address\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"address\",\"name\":\"creator\",\"type\":\"address\"},{\"internalType\":\"bool\",\"name\":\"approved\",\"type\":\"bool\"}],\"name\":\"setApprovedCreator\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"}],\"devdoc\":{\"kind\":\"dev\",\"methods\":{},\"version\":1},\"userdoc\":{\"kind\":\"user\",\"methods\":{},\"version\":1}},\"settings\":{\"compilationTarget\":{\"project:/contracts/MarketFactory.sol\":\"MarketFactory\"},\"evmVersion\":\"paris\",\"libraries\":{},\"metadata\":{\"bytecodeHash\":\"ipfs\"},\"optimizer\":{\"enabled\":false,\"runs\":200},\"remappings\":[]},\"sources\":{\"project:/contracts/MarketFactory.sol\":{\"keccak256\":\"0xd0ed1c82d080c54becd464f76e2622589ec37864f996ffa3cfe8d2b9c325612a\",\"license\":\"MIT\",\"urls\":[\"bzz-raw://481b3a85dd8ac00fc0836c15d7d6d7b145d7d887e77ad0d4dd23c464c32cce19\",\"dweb:/ipfs/Qme6rE3WAEaizEpAGAp25nKbfFCEkpRnr1jzT31GTYwZAg\"]},\"project:/contracts/PredictionMarket.sol\":{\"keccak256\":\"0x136a2dee35db09115d1d803d99d4665ceacae8d6a4bfe5df37b31df0cb201379\",\"license\":\"MIT\",\"urls\":[\"bzz-raw://ff7959918df985a2d0a1f058f04fbf569bbf7e3a9193f3c958e1258a580b59b9\",\"dweb:/ipfs/QmYiCb15EtMX2YwmFc4wSLLXJVzV9Y5QTvD2fFBdqocvHs\"]}},\"version\":1}",
@@ -7415,8 +7411,8 @@
     "5777": {
       "events": {},
       "links": {},
-      "address": "0xD697BA8B92b896FfA92390976afF250bD48B9cb5",
-      "transactionHash": "0xfbae87740a6267c270ebf7d7722294bef5a683be40a284e3e3959b02a54b8bde"
+      "address": "0xa315e5FDE782a0B5fB8b8400F3E2dA30c7a84431",
+      "transactionHash": "0x85f4572fa12b08b9cee8a94ed921e9ebce20af2ef6d0341240b67bd313dac1cf"
     },
     "11155111": {
       "events": {},
@@ -7426,8 +7422,7 @@
     }
   },
   "schemaVersion": "3.4.16",
-  "updatedAt": "2025-12-17T15:50:49.123Z",
-  "networkType": "ethereum",
+  "updatedAt": "2025-12-18T00:33:22.395Z",
   "devdoc": {
     "kind": "dev",
     "methods": {},

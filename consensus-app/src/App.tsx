@@ -100,19 +100,15 @@ export default function App() {
 
     async function connect() {
         if (!window.ethereum) {
-            setStatus("MetaMask not detected.");
             return;
         }
 
         try {
-            setStatus("Switching to Sepolia…");
-
             try {
                 await ensureSepolia();
             } catch (switchErr: any) {
                 // 4902 = chain not added to MetaMask
                 if (switchErr?.code === 4902) {
-                    setStatus("Adding Sepolia…");
                     await window.ethereum.request({
                         method: "wallet_addEthereumChain",
                         params: [
@@ -131,14 +127,12 @@ export default function App() {
                 }
             }
 
-            setStatus("Connecting…");
             const provider = new BrowserProvider(window.ethereum);
             const accounts: string[] = await provider.send("eth_requestAccounts", []);
             const network = await provider.getNetwork();
 
             setAccount(accounts[0] ?? "");
             setChainId(network.chainId.toString());
-            setStatus("Connected to Sepolia.");
         } catch (err: any) {
             setStatus(err?.shortMessage ?? err?.message ?? "Connection failed.");
         }
@@ -605,9 +599,6 @@ export default function App() {
                             </button>
                             <p className="eyebrow">Market</p>
                             <h1>{market ? market.question : "Market not found"}</h1>
-                            <p className="hero-subtitle">
-                                Trade this market directly on-chain. Data refreshes live from Sepolia.
-                            </p>
                         </div>
                     </header>
 
@@ -781,15 +772,15 @@ export default function App() {
                                     <div className="section-headline">
                                         <div>
                                             <p className="eyebrow">Activity</p>
-                                            <h3>Recent transactions</h3>
                                         </div>
                                         <button
-                                            className="ghost"
+                                            className="ghost icon-button"
+                                            aria-label="Refresh activity"
                                             onClick={() =>
                                                 void loadTransactions(market.market)
                                             }
                                         >
-                                            Refresh
+                                            ↻
                                         </button>
                                     </div>
                                     <div className="transactions-list">
@@ -904,13 +895,14 @@ export default function App() {
                         </div>
                         {hasMetaMask && (
                             <button
-                                className="ghost"
+                                className="ghost icon-button"
+                                aria-label="Refresh markets"
                                 onClick={() => {
                                     void loadMarkets();
                                 }}
                                 disabled={loadingMarkets}
                             >
-                                {loadingMarkets ? "Refreshing…" : "Refresh"}
+                                ↻
                             </button>
                         )}
                     </div>
