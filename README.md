@@ -67,9 +67,27 @@
 - Jei pralaimėjo - išmoka 0.
 - **Edge case**: jei laimėjusioje pusėje niekas nestatė, rinka laikoma anuliuota *(angl. void)* ir vartotojai atgauna savo statymą (po mokesčio).
 
-
-
 ### 6) Mokesčių atsiėmimas (`withdrawFees`)
 **Tikslas:** `feeRecipient` atsiima išmoką.
 - `feeRecipient` kviečia `PredictionMarket.withdrawFees()`
 - `feesAccrued` išmokama į `feeRecipient` adresą
+
+## Testavimas lokaliame tinkle
+
+Sukūrus lokalų tinklą su įrankiu Ganache, komanda `truffle test` ištestuoja visas `PredictionMarket` bei `MarketFactory` funkcijas.
+Komandinės eilutės išvestis:
+`Factory allowlist
+   √ rejects unapproved creator (170ms)
+   √ owner can approve creator (54ms)
+   √ approved creator can create market and MarketCreated emits (121ms)
+ Market lifecycle (with fees)
+   √ allows staking and contract balance becomes 3 ETH after two stakes (170ms)
+   √ rejects resolve before closeTime (84ms)
+   √ rejects resolve from non-resolver (91ms)
+   √ resolves after closeTime and outcome is stored (120ms)
+   √ redeem drains pool and leaves only fees (0.015 ETH) in contract (236ms)
+   √ feeRecipient can withdraw fees and feesAccrued resets to 0 (250ms)
+   √ cannot redeem twice (177ms)
+
+
+10 passing (2s)`
