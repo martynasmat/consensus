@@ -74,9 +74,14 @@
 
 ## Testavimas lokaliame tinkle
 
-Sukūrus lokalų tinklą su įrankiu Ganache, komanda `truffle test` ištestuoja visas `PredictionMarket` bei `MarketFactory` funkcijas.
+**Testavimo žingsniai:**
+1) Sukurti lokalų tinklą (naudojamas įrankis Ganache).
+2) Paleisti išmaniąsias sutartis tinkle su komanda `truffle migrate --network development`
+3) komanda `truffle test` ištestuoja visas `PredictionMarket` bei `MarketFactory` funkcijas.
+
 Komandinės eilutės išvestis:
-`Factory allowlist
+```
+Factory allowlist
    √ rejects unapproved creator (170ms)
    √ owner can approve creator (54ms)
    √ approved creator can create market and MarketCreated emits (121ms)
@@ -90,4 +95,5 @@ Komandinės eilutės išvestis:
    √ cannot redeem twice (177ms)
 
 
-10 passing (2s)`
+10 passing (2s)
+```
