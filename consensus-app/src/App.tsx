@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import type { FormEvent, KeyboardEvent } from "react";
-import { BrowserProvider, Contract, formatEther, parseEther } from "ethers";
+import { BrowserProvider, Contract, formatEther, parseEther, isAddress } from "ethers";
 import { useNavigate, useMatch } from "react-router-dom";
 import { CONFIG } from "./config.ts";
 import { MarketFactoryABI } from "./abi/MarketFactory.ts";
@@ -55,12 +55,16 @@ export default function App() {
     const [account, setAccount] = useState<string>("");
     const [chainId, setChainId] = useState<string>("");
     const [status, setStatus] = useState<string>("");
+    const [factoryOwner, setFactoryOwner] = useState("");
 
     const [isApprovedCreator, setIsApprovedCreator] = useState<boolean | null>(null);
     const [creatingMarket, setCreatingMarket] = useState(false);
     const [questionInput, setQuestionInput] = useState("");
     const [closeTimeInput, setCloseTimeInput] = useState("");
     const [resolverInput, setResolverInput] = useState("");
+    const [approvalAddressInput, setApprovalAddressInput] = useState("");
+    const [approvalFlag, setApprovalFlag] = useState(true);
+    const [settingApproval, setSettingApproval] = useState(false);
     const [markets, setMarkets] = useState<MarketSummary[]>([]);
     const [loadingMarkets, setLoadingMarkets] = useState(false);
     const [marketsError, setMarketsError] = useState("");
@@ -90,6 +94,34 @@ export default function App() {
     useEffect(() => {
         setHasMetaMask(Boolean(window.ethereum));
     }, []);
+
+    useEffect(() => {
+        if (!window.ethereum || !hasMetaMask) {
+            setFactoryOwner("");
+            return;
+        }
+
+        let cancelled = false;
+        (async () => {
+            try {
+                const provider = new BrowserProvider(window.ethereum);
+                const factory = new Contract(FACTORY_ADDRESS, MarketFactoryABI, provider);
+                const owner: string = await factory.owner();
+                if (!cancelled) {
+                    setFactoryOwner(owner);
+                }
+            } catch (err) {
+                console.error("Failed to fetch factory owner", err);
+                if (!cancelled) {
+                    setFactoryOwner("");
+                }
+            }
+        })();
+
+        return () => {
+            cancelled = true;
+        };
+    }, [hasMetaMask]);
 
     async function ensureSepolia() {
         await window.ethereum.request({
@@ -247,6 +279,7 @@ export default function App() {
                 })
             );
 
+            summaries.sort((a, b) => a.closeTime - b.closeTime);
             setMarkets(summaries);
         } catch (err: any) {
             setMarketsError(
@@ -333,6 +366,44 @@ export default function App() {
             setStatus(err?.shortMessage ?? err?.message ?? "createMarket failed.");
         } finally {
             setCreatingMarket(false);
+        }
+    }
+
+    async function handleSetCreatorApproval(event?: FormEvent<HTMLFormElement>) {
+        event?.preventDefault();
+        if (!window.ethereum) return setStatus("MetaMask not detected.");
+        if (!account) return setStatus("Connect MetaMask first.");
+        if (!factoryOwner || account.toLowerCase() !== factoryOwner.toLowerCase()) {
+            return setStatus("Only the factory owner can manage creator approvals.");
+        }
+
+        const target = approvalAddressInput.trim();
+        if (!isAddress(target)) {
+            return setStatus("Enter a valid creator address.");
+        }
+
+        try {
+            setSettingApproval(true);
+            setStatus("Submitting approval transaction…");
+            const provider = new BrowserProvider(window.ethereum);
+            const signer = await provider.getSigner();
+            const factory = new Contract(FACTORY_ADDRESS, MarketFactoryABI, signer);
+            const tx = await factory.setApprovedCreator(target, approvalFlag);
+            setStatus("Waiting for confirmation…");
+            await tx.wait();
+            setStatus(
+                `Creator ${approvalFlag ? "approved" : "revoked"} successfully.`
+            );
+            setApprovalAddressInput("");
+            await loadMarkets();
+        } catch (err: any) {
+            setStatus(
+                err?.shortMessage ??
+                    err?.message ??
+                    "Failed to update creator approval."
+            );
+        } finally {
+            setSettingApproval(false);
         }
     }
 
@@ -561,6 +632,10 @@ export default function App() {
     }
 
     const canCreateMarket = isApprovedCreator === true;
+    const isFactoryOwner =
+        Boolean(account) &&
+        Boolean(factoryOwner) &&
+        account.toLowerCase() === factoryOwner.toLowerCase();
 
     if (viewingMarketPage) {
         const market = viewedMarket;
@@ -597,7 +672,6 @@ export default function App() {
                             <button className="ghost back-button" onClick={() => navigate("/")}>
                                 ← Back to markets
                             </button>
-                            <p className="eyebrow">Market</p>
                             <h1>{market ? market.question : "Market not found"}</h1>
                         </div>
                     </header>
@@ -666,39 +740,56 @@ export default function App() {
                                     </div>
                                 </div>
 
-                                <div className="buy-input-row">
-                                    <input
-                                        type="number"
-                                        min="0"
-                                        step="0.0001"
-                                        placeholder="0.0 ETH"
-                                        value={amountValue}
-                                        onChange={(e) =>
-                                            updateBuyAmount(market.market, e.target.value)
-                                        }
-                                    />
-                                </div>
+                                {market.outcome === 0 && (
+                                    <>
+                                        <div className="buy-input-row">
+                                            <input
+                                                type="number"
+                                                min="0"
+                                                step="0.0001"
+                                                placeholder="0.0 ETH"
+                                                value={amountValue}
+                                                onChange={(e) =>
+                                                    updateBuyAmount(market.market, e.target.value)
+                                                }
+                                            />
+                                        </div>
 
-                                {hasAmount && (
-                                    <div className="potential-popup">
-                                        <p>Potential YES win: {potentialYes} ETH</p>
-                                        <p>Potential NO win: {potentialNo} ETH</p>
-                                    </div>
+                                        {hasAmount && (
+                                            <div className="potential-popup">
+                                                <p>Potential YES win: {potentialYes} ETH</p>
+                                                <p>Potential NO win: {potentialNo} ETH</p>
+                                            </div>
+                                        )}
+                                    </>
                                 )}
 
-                                <div className="buy-row">
-                                    <button
-                                        className="buy-button buy-button--yes"
-                                        onClick={() => handleBuy(market, "Yes")}
+                                <div className="buy-row-wrapper">
+                                    {market.outcome !== 0 && (
+                                        <div className="resolved-pill">
+                                            Resolved – {OUTCOME_LABEL[market.outcome]}
+                                        </div>
+                                    )}
+                                    <div
+                                        className={`buy-row ${
+                                            market.outcome !== 0 ? "buy-row--disabled" : ""
+                                        }`}
                                     >
-                                        Buy YES · {yesPct}%
-                                    </button>
-                                    <button
-                                        className="buy-button buy-button--no"
-                                        onClick={() => handleBuy(market, "No")}
-                                    >
-                                        Buy NO · {noPct}%
-                                    </button>
+                                        <button
+                                            className="buy-button buy-button--yes"
+                                            onClick={() => handleBuy(market, "Yes")}
+                                            disabled={market.outcome !== 0}
+                                        >
+                                            Buy YES · {yesPct}%
+                                        </button>
+                                        <button
+                                            className="buy-button buy-button--no"
+                                            onClick={() => handleBuy(market, "No")}
+                                            disabled={market.outcome !== 0}
+                                        >
+                                            Buy NO · {noPct}%
+                                        </button>
+                                    </div>
                                 </div>
 
                                 {account.toLowerCase() === market.resolver.toLowerCase() && (
@@ -888,6 +979,49 @@ export default function App() {
                     </section>
                 )}
 
+                {account && isFactoryOwner && (
+                    <section className="card create-card">
+                        <div className="section-headline">
+                            <div>
+                                <p className="eyebrow">Admin</p>
+                                <h2>Manage creator approvals</h2>
+                            </div>
+                            <p className="approval-pill approval-pill--ok">
+                                Factory owner
+                            </p>
+                        </div>
+
+                        <form className="form-grid" onSubmit={handleSetCreatorApproval}>
+                            <label className="form-field">
+                                <span>Creator address</span>
+                                <input
+                                    type="text"
+                                    value={approvalAddressInput}
+                                    onChange={(e) => setApprovalAddressInput(e.target.value)}
+                                    placeholder="0xabc…"
+                                />
+                            </label>
+
+                            <label className="form-field">
+                                <span>Approval state</span>
+                                <select
+                                    value={approvalFlag ? "approve" : "revoke"}
+                                    onChange={(e) =>
+                                        setApprovalFlag(e.target.value === "approve")
+                                    }
+                                >
+                                    <option value="approve">Approve</option>
+                                    <option value="revoke">Revoke</option>
+                                </select>
+                            </label>
+
+                            <button className="primary" type="submit" disabled={settingApproval}>
+                                {settingApproval ? "Updating…" : "Update creator"}
+                            </button>
+                        </form>
+                    </section>
+                )}
+
                 <section className="markets-section">
                     <div className="section-headline">
                         <div>
@@ -959,7 +1093,6 @@ export default function App() {
                                                     ? new Date(mkt.closeTime * 1000).toLocaleString()
                                                     : "Unknown"}
                                             </span>
-                                            <span>Outcome: {OUTCOME_LABEL[mkt.outcome] ?? "Unknown"}</span>
                                         </div>
                                         <div className="buy-input-row">
                                             <input
@@ -983,25 +1116,38 @@ export default function App() {
                                                 <p>Potential NO win: {potentialNo} ETH</p>
                                             </div>
                                         )}
-                                        <div className="buy-row">
-                                            <button
-                                                className="buy-button buy-button--yes"
-                                                onClick={(e) => {
-                                                    e.stopPropagation();
-                                                    handleBuy(mkt, "Yes");
-                                                }}
+                                        <div className="buy-row-wrapper">
+                                            {mkt.outcome !== 0 && (
+                                                <div className="resolved-pill">
+                                                    Resolved – {OUTCOME_LABEL[mkt.outcome]}
+                                                </div>
+                                            )}
+                                            <div
+                                                className={`buy-row ${
+                                                    mkt.outcome !== 0 ? "buy-row--disabled" : ""
+                                                }`}
                                             >
-                                                Buy YES {yesPct}%
-                                            </button>
-                                            <button
-                                                className="buy-button buy-button--no"
-                                                onClick={(e) => {
-                                                    e.stopPropagation();
-                                                    handleBuy(mkt, "No");
-                                                }}
-                                            >
-                                                Buy NO {noPct}%
-                                            </button>
+                                                <button
+                                                    className="buy-button buy-button--yes"
+                                                    onClick={(e) => {
+                                                        e.stopPropagation();
+                                                        handleBuy(mkt, "Yes");
+                                                    }}
+                                                    disabled={mkt.outcome !== 0}
+                                                >
+                                                    Buy YES {yesPct}%
+                                                </button>
+                                                <button
+                                                    className="buy-button buy-button--no"
+                                                    onClick={(e) => {
+                                                        e.stopPropagation();
+                                                        handleBuy(mkt, "No");
+                                                    }}
+                                                    disabled={mkt.outcome !== 0}
+                                                >
+                                                    Buy NO {noPct}%
+                                                </button>
+                                            </div>
                                         </div>
                                     </article>
                                 );

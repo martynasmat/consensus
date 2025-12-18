@@ -125,6 +125,9 @@ body {
   background: linear-gradient(135deg, #6366f1, #8b5cf6);
   color: #fff;
   border: none;
+  height: 60%;
+  justify-self: center;
+  align-self: center;
 }
 
 .primary:disabled {
@@ -230,19 +233,35 @@ body {
   color: #d1d7ff;
 }
 
-.form-field input {
+.form-field input,
+.form-field select {
   border-radius: 12px;
   border: 1px solid rgba(255, 255, 255, 0.1);
   background: rgba(7, 11, 24, 0.9);
   padding: 0.8rem;
   color: #f5f7fb;
   font-size: 0.95rem;
+  font-family: inherit;
 }
 
-.form-field input:focus {
+.form-field input:focus,
+.form-field select:focus {
   outline: none;
   border-color: #8b5cf6;
   box-shadow: 0 0 0 1px rgba(139, 92, 246, 0.2);
+}
+
+.form-field select {
+  appearance: none;
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  cursor: pointer;
+  background-image: linear-gradient(45deg, transparent 50%, rgba(245, 247, 251, 0.5) 50%),
+    linear-gradient(135deg, rgba(245, 247, 251, 0.5) 50%, transparent 50%);
+  background-position: calc(100% - 20px) calc(50% - 2px), calc(100% - 15px) calc(50% - 2px);
+  background-size: 5px 5px, 5px 5px;
+  background-repeat: no-repeat;
+  padding-right: 2.5rem;
 }
 
 .markets-section {
@@ -309,6 +328,30 @@ body {
 .buy-row {
   display: flex;
   gap: 12px;
+}
+
+.buy-row-wrapper {
+  position: relative;
+}
+
+.resolved-pill {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  background: rgba(15, 23, 42, 0.9);
+  border-radius: 999px;
+  padding: 6px 14px;
+  font-size: 0.85rem;
+  color: #cbd5ff;
+  z-index: 1;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.buy-row--disabled {
+  filter: blur(1px);
+  opacity: 0.3;
+  pointer-events: none;
 }
 
 .buy-input-row {
@@ -414,6 +457,17 @@ body {
 }
 .back-button {
   margin-bottom: 8px;
+  border: none;
+  background: none;
+  color: #9aaad8;
+  padding: 0;
+  font-weight: 600;
+  text-align: left;
+  cursor: pointer;
+}
+
+.back-button:hover {
+  color: #cbd5ff;
 }
 
 .detail-card {
