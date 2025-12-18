@@ -18,17 +18,37 @@ body {
   gap: 32px;
 }
 
+.app-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 16px;
+  padding-bottom: 16px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.header-actions {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.header-account {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  align-items: flex-end;
+}
+
+.small-text {
+  font-size: 0.8rem;
+}
+
 .hero {
   display: flex;
   justify-content: space-between;
   gap: 32px;
   align-items: flex-start;
-}
-
-.hero h1 {
-  font-size: 3rem;
-  margin: 8px 0;
-  letter-spacing: -0.03em;
 }
 
 .hero-subtitle {
@@ -486,4 +506,20 @@ body {
 
 .withdraw-button {
   align-self: flex-start;
+}
+
+.redeem-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.redeem-row strong {
+  color: #4ade80;
+}
+.brand span {
+  font-size: 2.4rem;
+  letter-spacing: 0.3em;
+  text-transform: uppercase;
+  color: #f5f7fb;
 }

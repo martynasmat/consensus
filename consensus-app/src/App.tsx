@@ -6,6 +6,7 @@ import { CONFIG } from "./config.ts";
 import { MarketFactoryABI } from "./abi/MarketFactory.ts";
 import { PredictionMarketABI } from "./abi/PredictionMarket.ts";
 import "./App.css";
+import { Header } from "./components/Header";
 
 declare global {
     interface Window {
@@ -31,9 +32,16 @@ type MarketSummary = {
 
 type MarketTx = {
     hash: string;
-    type: "Buy YES" | "Buy NO" | "Resolve" | "Fee Withdrawal" | "Trade";
+    type: "Buy YES" | "Buy NO" | "Resolve" | "Fee Withdrawal" | "Redeem" | "Trade";
     sender: string;
     value: string;
+};
+
+type MarketHoldings = {
+    yes: string;
+    no: string;
+    claimed: boolean;
+    redeemable: string;
 };
 
 const OUTCOME_LABEL: Record<number, string> = {
@@ -67,11 +75,17 @@ export default function App() {
         ? markets.find((m) => m.market.toLowerCase() === viewedMarketAddress)
         : null;
     const viewingMarketPage = Boolean(marketMatch);
+    const [marketHoldings, setMarketHoldings] = useState<
+        Record<string, MarketHoldings>
+    >({});
     useEffect(() => {
         if (viewedMarket && window.ethereum) {
             void loadTransactions(viewedMarket.market);
+            if (account) {
+                void loadHoldings(viewedMarket.market);
+            }
         }
-    }, [viewedMarket?.market]);
+    }, [viewedMarket?.market, account]);
 
     useEffect(() => {
         setHasMetaMask(Boolean(window.ethereum));
@@ -348,6 +362,7 @@ export default function App() {
                         parsed = iface.parseLog({ topics: log.topics, data: log.data });
                         if (parsed?.name === "Resolved") type = "Resolve";
                         if (parsed?.name === "FeesWithdrawn") type = "Fee Withdrawal";
+                        if (parsed?.name === "Redeemed") type = "Redeem";
                         if (parsed?.name === "Staked") {
                             const outcome = Number(
                                 parsed.args?.side ?? parsed.args?.outcome ?? 0
@@ -376,6 +391,46 @@ export default function App() {
             }));
         } catch (err: any) {
             console.error("Failed to fetch transactions", err);
+        }
+    }
+
+    async function loadHoldings(marketAddress: string) {
+        if (!window.ethereum || !account) return;
+        try {
+            const provider = new BrowserProvider(window.ethereum);
+            const contract = new Contract(marketAddress, PredictionMarketABI, provider);
+            const [yesStake, noStake, claimed, totalYes, totalNo, outcome] =
+                await Promise.all([
+                    contract.stakeYes(account),
+                    contract.stakeNo(account),
+                    contract.claimed(account),
+                    contract.totalYes(),
+                    contract.totalNo(),
+                    contract.outcome(),
+                ]);
+            const yesFloat = Number(formatEther(yesStake));
+            const noFloat = Number(formatEther(noStake));
+            const poolYes = Number(formatEther(totalYes));
+            const poolNo = Number(formatEther(totalNo));
+            const totalPool = poolYes + poolNo;
+            let redeemable = 0;
+            if (Number(outcome) === 1 && yesFloat > 0 && poolYes > 0) {
+                redeemable = (yesFloat * totalPool) / poolYes;
+            }
+            if (Number(outcome) === 2 && noFloat > 0 && poolNo > 0) {
+                redeemable = (noFloat * totalPool) / poolNo;
+            }
+            setMarketHoldings((prev) => ({
+                ...prev,
+                [marketAddress]: {
+                    yes: yesFloat.toFixed(3),
+                    no: noFloat.toFixed(3),
+                    claimed: Boolean(claimed),
+                    redeemable: redeemable.toFixed(3),
+                },
+            }));
+        } catch (err) {
+            console.error("Failed to load holdings", err);
         }
     }
 
@@ -440,6 +495,33 @@ export default function App() {
         }
     }
 
+    async function claimWinnings(
+        market: MarketSummary,
+        button?: HTMLButtonElement | null
+    ) {
+        if (!window.ethereum) return setStatus("MetaMask not detected.");
+        if (!account) return setStatus("Connect MetaMask first.");
+
+        try {
+            button && (button.disabled = true);
+            setStatus("Submitting redeem transaction…");
+            const provider = new BrowserProvider(window.ethereum);
+            const signer = await provider.getSigner();
+            const contract = new Contract(market.market, PredictionMarketABI, signer);
+            const tx = await contract.redeem();
+            setStatus("Waiting for confirmation…");
+            await tx.wait();
+            setStatus("Winnings claimed.");
+            await loadMarkets();
+            await loadHoldings(market.market);
+            await loadTransactions(market.market);
+        } catch (err: any) {
+            setStatus(err?.shortMessage ?? err?.message ?? "Redeem failed.");
+        } finally {
+            button && (button.disabled = false);
+        }
+    }
+
     function updateBuyAmount(marketAddress: string, value: string) {
         setBuyAmounts((prev) => ({
             ...prev,
@@ -486,35 +568,6 @@ export default function App() {
 
     const canCreateMarket = isApprovedCreator === true;
 
-    const renderWalletCard = () => (
-        <div className="card wallet-card">
-            {!hasMetaMask && (
-                <p className="muted">Install MetaMask to get started.</p>
-            )}
-
-            {hasMetaMask && !account && (
-                <button className="primary" onClick={connect}>
-                    Connect MetaMask
-                </button>
-            )}
-
-            {account && (
-                <>
-                    <p className="label">Connected wallet</p>
-                    <a
-                        href={sepoliaEtherscanAddress(account)}
-                        target="_blank"
-                        rel="noreferrer"
-                        className="address-link"
-                    >
-                        {account}
-                    </a>
-                    <p className="muted">Chain: {chainId}</p>
-                </>
-            )}
-        </div>
-    );
-
     if (viewingMarketPage) {
         const market = viewedMarket;
         const yesFloat = market ? Number(market.totalYes) || 0 : 0;
@@ -536,6 +589,15 @@ export default function App() {
         return (
             <div className="app">
                 <div className="app-shell">
+                    <Header
+                        hasMetaMask={hasMetaMask}
+                        account={account}
+                        chainId={chainId}
+                        onConnect={connect}
+                        accountLink={
+                            account ? sepoliaEtherscanAddress(account) : undefined
+                        }
+                    />
                     <header className="hero">
                         <div>
                             <button className="ghost back-button" onClick={() => navigate("/")}>
@@ -547,7 +609,6 @@ export default function App() {
                                 Trade this market directly on-chain. Data refreshes live from Sepolia.
                             </p>
                         </div>
-                        {renderWalletCard()}
                     </header>
 
                     {status && <div className="status-banner">{status}</div>}
@@ -625,7 +686,6 @@ export default function App() {
                                             updateBuyAmount(market.market, e.target.value)
                                         }
                                     />
-                                    <span className="muted">ETH</span>
                                 </div>
 
                                 {hasAmount && (
@@ -679,7 +739,30 @@ export default function App() {
                                     </div>
                                 )}
 
-                                {account.toLowerCase() === market.feeRecipient.toLowerCase() && (
+                                {account &&
+                                    marketHoldings[market.market] &&
+                                    Number(marketHoldings[market.market].redeemable) > 0 &&
+                                    !marketHoldings[market.market].claimed && (
+                                        <div className="redeem-row">
+                                            <p className="muted">
+                                                Claimable:{" "}
+                                                <strong>
+                                                    {marketHoldings[market.market].redeemable} ETH
+                                                </strong>
+                                            </p>
+                                            <button
+                                                className="primary"
+                                                onClick={(e) =>
+                                                    claimWinnings(market, e.currentTarget)
+                                                }
+                                            >
+                                                Claim winnings
+                                            </button>
+                                        </div>
+                                    )}
+
+                                {account &&
+                                    account.toLowerCase() === market.feeRecipient.toLowerCase() && (
                                     <div className="withdraw-row">
                                         <p className="muted">
                                             Fees accrued:{" "}
@@ -692,7 +775,7 @@ export default function App() {
                                             Withdraw fees
                                         </button>
                                     </div>
-                                )}
+                                    )}
 
                                 <div className="transactions-section">
                                     <div className="section-headline">
@@ -756,19 +839,17 @@ export default function App() {
     return (
         <div className="app">
             <div className="app-shell">
-                <header className="hero">
-                    <div>
-                        <p className="eyebrow">On-chain prediction markets</p>
-                        <h1>Consensus</h1>
-                        <p className="hero-subtitle">
-                            Launch, resolve, and trade binary markets directly on Sepolia.
-                        </p>
-                    </div>
-                    {renderWalletCard()}
-                </header>
+                <Header
+                    hasMetaMask={hasMetaMask}
+                    account={account}
+                    chainId={chainId}
+                    onConnect={connect}
+                    accountLink={
+                        account ? sepoliaEtherscanAddress(account) : undefined
+                    }
+                />
 
                 {status && <div className="status-banner">{status}</div>}
-
                 {account && canCreateMarket && (
                     <section className="card create-card">
                         <div className="section-headline">
@@ -820,13 +901,6 @@ export default function App() {
                     <div className="section-headline">
                         <div>
                             <p className="eyebrow">Markets</p>
-                            <div className="live-headline">
-                                <h2>Live opportunities</h2>
-                                <span className="live-indicator">
-                                    <span className="live-dot" />
-                                    <span>Live</span>
-                                </span>
-                            </div>
                         </div>
                         {hasMetaMask && (
                             <button
@@ -907,7 +981,6 @@ export default function App() {
                                                     updateBuyAmount(mkt.market, e.target.value)
                                                 }
                                             />
-                                            <span className="muted">ETH</span>
                                         </div>
                                         {hasAmount && (
                                             <div
@@ -926,7 +999,7 @@ export default function App() {
                                                     handleBuy(mkt, "Yes");
                                                 }}
                                             >
-                                                Buy YES · {yesPct}%
+                                                Buy YES {yesPct}%
                                             </button>
                                             <button
                                                 className="buy-button buy-button--no"
@@ -935,7 +1008,7 @@ export default function App() {
                                                     handleBuy(mkt, "No");
                                                 }}
                                             >
-                                                Buy NO · {noPct}%
+                                                Buy NO {noPct}%
                                             </button>
                                         </div>
                                     </article>
