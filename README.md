@@ -2,11 +2,14 @@
 # "Consensus" prognozių rinka
 
 ## Idėja ir verslo modelis
-"Consensus" yra decentralizuota prognozių rinka *(angl. prediction market)*, veikianti panašiu principu į *Polymarket/Kalshi*:
+"Consensus" yra prognozių rinkų *(angl. prediction market)* platforma, veikianti panašiu principu į *Polymarket/Kalshi*:
+- administratorius `owner` deploy'ina išmaniąją sutartį `MarketFactory`,
+- administratorius `owner` patvirtina kūrėją `creator` su funkcija `MarketFactory.setApprovedCreator(creator, true)`,
+- patvirtintas kūrėjas `creator` kviečia funkciją `MarketFactory.createMarket(question, closeTime, resolver)` ir sukuria lažybas,
 - vartotojai stato ETH už **YES** arba **NO**,
-- pasibaigus laikui, `resolver` nustato laimėjusį rezultatą,
-- laimėtojai pasidalina bendrą sumą proporcingai pagal savo statymo dydį.
-- Platforma pasilieka 0.5% mokestį nuo kiekvieno statymo.
+- po laiko `closeTime` `resolver` nustato laimėjusį rezultatą,
+- `feeRecipient` išsimoka sukauptą mokesčių sumą,
+- laimėtojai išsimoka laimėtą sumą.
 
 ## Šalys
 - `owner`
@@ -21,16 +24,21 @@
    - gali kviesti `withdrawFees()` ir išsimokėti `feesAccrued`. 
 
 ## Duomenys
-Kiekviena rinka `PredictionMarket` turi:
-- `question`: klausimas tekstu, saugomas grandinėje
-- `questionId`: klausimo identifikatorių `keccak256(question)`
-- `closeTime`: *UNIX timestamp*, iki kurio galima statyti
+`PredictionMarket` duomenys:
+- `question`: klausimas teksto forma
+- `questionId`: klausimo identifikatorius `keccak256(question)`
+- `closeTime`: *UNIX timestamp*, iki kurio galima statyti ir po kurio galima kviesti `PredictionMarket.resolve()`
 - `resolver`: adresas, kuris gali nustatyti rezultatą
-- `outcome`: `Unresolved / Yes / No`
+- `outcome`: `Unresolved / Yes / No`: lažybų rezultatas
 - `totalYes`, `totalNo`: bendros statymų sumos už YES bei NO rezultatus (po mokesčių)
 - `stakeYes`, `stakeNo`: `mapping(address => uint256)` kintamieji, kurie saugo kiek kiekvienas vartotojas pastatė
 - `claimed`: `mapping(address => bool)` kintamasis, kuris saugo, ar vartotojas jau išsimokėjo laimėjimą
 - `feesAccrued`: šiame `PredictionMarket` sukaupta mokesčių suma, kurią gali išsimokėti `feeRecipient`
+
+`MarketFactory` duomenys:
+- `owner` administratoriaus adresas
+- `approvedCreator`: `mapping(address => bool)` tipo kintamasis, saugantis patvirtintų kūrėjų `creator` adresus
+- `markets`: `PredictionMarket` adresų masyvas
 
 ## Tipiniai scenarijai (use cases)
 
@@ -58,6 +66,8 @@ Kiekviena rinka `PredictionMarket` turi:
 - Jei vartotojas laimėjo - išmoka proporcinga jo statymui.
 - Jei pralaimėjo - išmoka 0.
 - **Edge case**: jei laimėjusioje pusėje niekas nestatė, rinka laikoma anuliuota *(angl. void)* ir vartotojai atgauna savo statymą (po mokesčio).
+
+
 
 ### 6) Mokesčių atsiėmimas (`withdrawFees`)
 **Tikslas:** `feeRecipient` atsiima išmoką.
