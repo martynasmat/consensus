@@ -5,11 +5,16 @@
 "Consensus" yra prognozių rinkų *(angl. prediction market)* platforma, veikianti panašiu principu į *Polymarket/Kalshi*:
 - administratorius `owner` deploy'ina išmaniąją sutartį `MarketFactory`,
 - administratorius `owner` patvirtina kūrėją `creator` su funkcija `MarketFactory.setApprovedCreator(creator, true)`,
-- patvirtintas kūrėjas `creator` kviečia funkciją `MarketFactory.createMarket(question, closeTime, resolver)` ir sukuria lažybas,
+- patvirtintas kūrėjas `creator` kviečia funkciją `MarketFactory.createMarket(question, closeTime, resolver)`,
+- `MarketFactory` sukuria naują `PredictionMarket`,
 - vartotojai stato ETH už **YES** arba **NO** (platforma pasilieka 0.5% mokestį nuo statymo sumos),
 - po laiko `closeTime` `resolver` nustato laimėjusį rezultatą,
-- `feeRecipient` išsimoka sukauptą mokesčių sumą,
-- laimėtojai išsimoka laimėtą sumą.
+- - laimėtojai išsimoka laimėtą sumą,
+- `feeRecipient` išsimoka sukauptą mokesčių sumą.
+
+### Sekų diagrama
+<img width="1081" height="1151" alt="seq drawio" src="https://github.com/user-attachments/assets/70f32349-5963-4166-abbd-704760863940" />
+
 
 ## Šalys
 - `owner`
