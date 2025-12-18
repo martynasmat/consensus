@@ -76,7 +76,7 @@
 
 **Testavimo žingsniai:**
 1) Sukurti lokalų tinklą (naudojamas įrankis Ganache).
-2) Paleisti išmaniąsias sutartis tinkle su komanda `truffle migrate --network development`
+2) Įdiegti išmaniąsias sutartis tinkle su komanda `truffle migrate --network development`.
 3) komanda `truffle test` ištestuoja visas `PredictionMarket` bei `MarketFactory` funkcijas.
 
 Komandinės eilutės išvestis:
@@ -97,3 +97,11 @@ Factory allowlist
 
 10 passing (2s)
 ```
+
+## Svetainė
+
+Naudotojo sąsaja kurta su React ir Vite įrankiais.
+Svetainės paleidimo lokaliai žingsniai:
+1) `cd ./consensus-app/`
+2) `npm install`
+3) `npm run dev`
