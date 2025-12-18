@@ -6,7 +6,7 @@
 - administratorius `owner` deploy'ina išmaniąją sutartį `MarketFactory`,
 - administratorius `owner` patvirtina kūrėją `creator` su funkcija `MarketFactory.setApprovedCreator(creator, true)`,
 - patvirtintas kūrėjas `creator` kviečia funkciją `MarketFactory.createMarket(question, closeTime, resolver)` ir sukuria lažybas,
-- vartotojai stato ETH už **YES** arba **NO**,
+- vartotojai stato ETH už **YES** arba **NO** (platforma pasilieka 0.5% nuo statymo sumos),
 - po laiko `closeTime` `resolver` nustato laimėjusį rezultatą,
 - `feeRecipient` išsimoka sukauptą mokesčių sumą,
 - laimėtojai išsimoka laimėtą sumą.
